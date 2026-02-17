@@ -13,6 +13,14 @@ gtfs-multicity-ticketing/
     schema.sql
     sample_data.sql
     dump.sql
+    import_gtfs.sql
+  data/
+    gtfs/
+      raw/
+      incoming/
+      README.md
+  scripts/
+    import_gtfs.ps1
   README.md
 ```
 
@@ -48,6 +56,49 @@ psql -d gtfs_ticketing -f db/sample_data.sql
 
 ```bash
 psql -d gtfs_ticketing -f db/dump.sql
+```
+
+## Import feed GTFS reali (multi-citta)
+
+1. Inserisci feed GTFS `.zip` (o file `.txt` estratti) in:
+- `data/gtfs/raw/MIL/`
+- `data/gtfs/raw/ROM/`
+
+2. Lancia import per una citta:
+
+```powershell
+.\scripts\import_gtfs.ps1 `
+  -CityCode MIL `
+  -CityName "Milano" `
+  -FeedPath ".\data\gtfs\raw\MIL\feed.zip" `
+  -ServiceDate 2026-02-18 `
+  -DbName gtfs_ticketing
+```
+
+3. Lancia import per un'altra citta:
+
+```powershell
+.\scripts\import_gtfs.ps1 `
+  -CityCode ROM `
+  -CityName "Roma" `
+  -FeedPath ".\data\gtfs\raw\ROM\feed.zip" `
+  -ServiceDate 2026-02-18 `
+  -DbName gtfs_ticketing
+```
+
+Lo script supporta:
+- feed come cartella o `.zip`
+- upsert (aggiornamento dati gia presenti)
+- fallback automatico per `calendar.txt` e `fare_attributes.txt` se mancanti
+
+Verifica rapida import:
+
+```sql
+SET search_path TO transport, public;
+SELECT city_code, name FROM city ORDER BY city_code;
+SELECT city_id, COUNT(*) AS routes FROM route GROUP BY city_id ORDER BY city_id;
+SELECT city_id, COUNT(*) AS trips FROM trip GROUP BY city_id ORDER BY city_id;
+SELECT city_id, COUNT(*) AS stop_times FROM stop_time GROUP BY city_id ORDER BY city_id;
 ```
 
 ## Modello dati (sintesi)
@@ -196,4 +247,3 @@ SELECT
 FROM ticket t
 WHERE t.ticket_code = 'TCK-MIL-000001';
 ```
-
