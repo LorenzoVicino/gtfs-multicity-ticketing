@@ -1,14 +1,236 @@
-# Progettazione DB GTFS Multi-Citta + Ticketing
+# GTFS Hub - Progettazione DB GTFS Multi-Citta + Ticketing
 
 Schema di persistenza relazionale PostgreSQL per una piattaforma di:
 - consultazione orari trasporto pubblico (GTFS)
 - gestione itinerari anche con cambi/scali
 - vendita e validazione digitale dei biglietti
 
+## Web App Next.js (full stack)
+
+Questa cartella ora include anche una web app Next.js con:
+- ricerca citta tramite barra testuale + dropdown
+- click su una citta per caricare GTFS dal database
+- visualizzazione su mappa (OpenStreetMap + Leaflet) di fermate e linee principali
+- upload GTFS `.zip` diretto dalla homepage (con import automatico nel DB Docker)
+
+### Setup rapido
+
+1. Configura variabili ambiente:
+
+```bash
+cp .env.example .env.local
+```
+
+Su Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+2. Verifica `DATABASE_URL` in `.env.local`:
+
+```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/gtfs_ticketing
+```
+
+3. Installa dipendenze e avvia:
+
+```bash
+npm install
+npm run dev
+```
+
+4. Apri:
+
+```text
+http://localhost:3000
+```
+
+### API disponibili
+
+- `GET /api/cities` -> elenco citta
+- `GET /api/cities/{CITY_CODE}/gtfs` -> fermate + linee campione della citta
+- `POST /api/gtfs/upload` -> upload `.zip` + import GTFS nel DB
+- `POST /api/tickets/purchase` -> acquisto ticket a tempo (mock payment)
+- `POST /api/tickets/{ticketCode}/validate` -> validazione ticket a tempo
+- `GET /api/stops/departures?cityId=...&stopId=...&serviceDate=YYYY-MM-DD` -> prossime 10 partenze da fermata
+- `GET /api/bookings?email=...` -> storico prenotazioni cliente (paginato)
+- `POST /api/itineraries` -> creazione itinerario con 1-2 segmenti (cambi/scali)
+- `GET /api/itineraries/{itineraryId}` -> lettura itinerario con segmenti ordinati
+
+Esempi manuali (`curl`):
+
+```bash
+curl -X POST http://localhost:3000/api/tickets/purchase \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cityCode": "BRI",
+    "ticketTypeName": "Urban 90",
+    "customer": { "email": "demo@example.com", "fullName": "Demo User" },
+    "passengers": [{ "fullName": "Demo Passenger", "birthDate": "1999-01-01" }]
+  }'
+```
+
+Fallback con `cityId`:
+
+```bash
+curl -X POST http://localhost:3000/api/tickets/purchase \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cityId": 1,
+    "ticketTypeName": "Urban 90",
+    "customer": { "email": "demo2@example.com", "fullName": "Demo User 2" },
+    "passengers": [{ "fullName": "Passenger 1" }, { "fullName": "Passenger 2" }]
+  }'
+```
+
+Validazione ticket (prima o successive timbrature):
+
+```bash
+curl -X POST http://localhost:3000/api/tickets/TKT-ABCDEF123456/validate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "stopId": 123,
+    "segmentId": 456,
+    "validatorDevice": "turnstile-01"
+  }'
+```
+
+Validazione con body vuoto:
+
+```bash
+curl -X POST http://localhost:3000/api/tickets/TKT-ABCDEF123456/validate \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Storico prenotazioni per email:
+
+```bash
+curl "http://localhost:3000/api/bookings?email=demo@example.com&limit=20&offset=0"
+```
+
+Prossime partenze da fermata:
+
+```bash
+curl "http://localhost:3000/api/stops/departures?cityId=1&stopId=123&serviceDate=2026-02-22"
+```
+
+Creazione itinerario (1 segmento):
+
+```bash
+curl -X POST http://localhost:3000/api/itineraries \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cityCode": "BRI",
+    "segments": [
+      { "segmentSeq": 1, "tripId": 123, "fromStopId": 10, "toStopId": 20 }
+    ]
+  }'
+```
+
+Lettura itinerario:
+
+```bash
+curl "http://localhost:3000/api/itineraries/999"
+```
+
+Creazione itinerario con cambio (2 segmenti):
+
+```bash
+curl -X POST http://localhost:3000/api/itineraries \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cityId": 1,
+    "segments": [
+      { "segmentSeq": 1, "tripId": 123, "fromStopId": 10, "toStopId": 20 },
+      { "segmentSeq": 2, "tripId": 456, "fromStopId": 30, "toStopId": 40 }
+    ]
+  }'
+```
+
+## PostgreSQL con Docker (consigliato)
+
+Se non vuoi installare `psql` localmente, usa Docker.
+
+### Avvio database
+
+```bash
+docker compose up -d postgres
+```
+
+Questo crea:
+- database `gtfs_ticketing`
+- utente `postgres`
+- password `postgres`
+- import automatico iniziale di `db/schema.sql` e `db/sample_data.sql`
+
+Stringa connessione:
+
+```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/gtfs_ticketing
+```
+
+### Verifica rapida
+
+```bash
+docker compose ps
+docker compose logs -f postgres
+```
+
+### Reset completo del database
+
+```bash
+docker compose down -v
+docker compose up -d postgres
+```
+
+Nota: gli script in `/docker-entrypoint-initdb.d` vengono eseguiti solo su volume vuoto.
+
+## Database dump
+
+### Generare `db/dump.sql` con `pg_dump`
+
+Se usi PostgreSQL locale:
+
+```bash
+pg_dump -d gtfs_ticketing -f db/dump.sql
+```
+
+Se usi il database Docker (`gtfs-postgres`):
+
+```bash
+docker exec -i gtfs-postgres pg_dump -U postgres -d gtfs_ticketing > db/dump.sql
+```
+
+### Ripristino da dump con `psql`
+
+Database locale:
+
+```bash
+psql -d gtfs_ticketing -f db/dump.sql
+```
+
+Database Docker:
+
+```bash
+Get-Content db/dump.sql | docker exec -i gtfs-postgres psql -U postgres -d gtfs_ticketing
+```
+
+### Note Docker Compose
+
+- `docker compose down -v` rimuove anche il volume dati: al prossimo `up` riparte init (`schema.sql`, `sample_data.sql`, eventuali script in `docker-entrypoint-initdb.d`).
+- Il ripristino da `dump.sql` e l'init automatico sono alternative: usa l'uno o l'altro a seconda del flusso.
+- Prima di dump/restore verifica che il container sia attivo:
+
+```bash
+docker compose ps
+```
+
 ## Struttura repository
 
 ```text
-gtfs-multicity-ticketing/
+gtfs-hub/
   db/
     schema.sql
     sample_data.sql
