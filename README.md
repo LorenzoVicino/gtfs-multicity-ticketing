@@ -163,7 +163,12 @@ Questo crea:
 - database `gtfs_ticketing`
 - utente `postgres`
 - password `postgres`
-- import automatico iniziale di `db/schema.sql` e `db/sample_data.sql`
+- import automatico iniziale di:
+  - `db/schema.sql`
+  - `data/gtfs/incoming/import_BRI.sql`
+  - `data/gtfs/incoming/import_BOL.sql`
+  - `db/extend_ticketing.sql`
+  - `db/indexes.sql`
 
 Stringa connessione:
 
@@ -186,6 +191,7 @@ docker compose up -d postgres
 ```
 
 Nota: gli script in `/docker-entrypoint-initdb.d` vengono eseguiti solo su volume vuoto.
+Per una macchina nuova (es. il prof che clona il repo), `docker compose up -d postgres` e sufficiente.
 
 ## Database dump
 
@@ -219,7 +225,7 @@ Get-Content db/dump.sql | docker exec -i gtfs-postgres psql -U postgres -d gtfs_
 
 ### Note Docker Compose
 
-- `docker compose down -v` rimuove anche il volume dati: al prossimo `up` riparte init (`schema.sql`, `sample_data.sql`, eventuali script in `docker-entrypoint-initdb.d`).
+- `docker compose down -v` rimuove anche il volume dati: al prossimo `up` riparte l'init completo (schema + import GTFS Bari/Bologna + estensioni + indici).
 - Il ripristino da `dump.sql` e l'init automatico sono alternative: usa l'uno o l'altro a seconda del flusso.
 - Prima di dump/restore verifica che il container sia attivo:
 
@@ -233,14 +239,17 @@ docker compose ps
 gtfs-hub/
   db/
     schema.sql
-    sample_data.sql
+    extend_ticketing.sql
+    indexes.sql
     dump.sql
     import_gtfs.sql
   data/
     gtfs/
-      raw/
       incoming/
-      README.md
+        BARI_norm/
+        BOLOGNA_norm/
+        import_BRI.sql
+        import_BOL.sql
   scripts/
     import_gtfs.ps1
   README.md
@@ -269,7 +278,10 @@ createdb -U postgres gtfs_ticketing
 
 ```bash
 psql -d gtfs_ticketing -f db/schema.sql
-psql -d gtfs_ticketing -f db/sample_data.sql
+psql -d gtfs_ticketing -f data/gtfs/incoming/import_BRI.sql
+psql -d gtfs_ticketing -f data/gtfs/incoming/import_BOL.sql
+psql -d gtfs_ticketing -f db/extend_ticketing.sql
+psql -d gtfs_ticketing -f db/indexes.sql
 ```
 
 ### Opzione 2: import completo da dump
