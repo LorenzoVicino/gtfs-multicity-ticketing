@@ -22,3 +22,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# local upload artifacts
+data/gtfs/incoming/uploads/
+

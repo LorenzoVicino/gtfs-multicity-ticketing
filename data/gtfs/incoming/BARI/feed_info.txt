@@ -1,0 +1,2 @@
+feed_publisher_name,feed_publisher_url,feed_contact_email,feed_lang,default_lang,feed_start_date,feed_end_date,feed_version
+Amtab  S.p.A,http://www.amtab.it,segreteria@amtab.it,it,it,20260101,20261231,1
