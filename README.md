@@ -31,6 +31,7 @@ Copy-Item .env.example .env.local
 
 ```env
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/gtfs_ticketing
+TICKET_QR_SECRET=change-me-with-a-long-random-secret
 ```
 
 3. Installa dipendenze e avvia:
@@ -50,9 +51,12 @@ http://localhost:3000
 
 - `GET /api/cities` -> elenco citta
 - `GET /api/cities/{CITY_CODE}/gtfs` -> fermate + linee campione della citta
+- `GET /api/cities/{CITY_CODE}/tickets` -> catalogo ticket agency-based della citta
 - `POST /api/gtfs/upload` -> upload `.zip` + import GTFS nel DB
-- `POST /api/tickets/purchase` -> acquisto ticket a tempo (mock payment)
-- `POST /api/tickets/{ticketCode}/validate` -> validazione ticket a tempo
+- `POST /api/tickets/purchase` -> acquisto ticket a tempo agency-based con QR firmato
+- `POST /api/tickets/validate` -> validazione ticket tramite `qrToken` o `ticketCode`
+- `POST /api/tickets/{ticketCode}/validate` -> validazione ticket per codice esplicito
+- `GET /api/tickets/{ticketCode}` -> dettaglio ticket con metadata agency e `qrToken`
 - `GET /api/stops/departures?cityId=...&stopId=...&serviceDate=YYYY-MM-DD` -> prossime 10 partenze da fermata
 - `GET /api/bookings?email=...` -> storico prenotazioni cliente (paginato)
 - `POST /api/itineraries` -> creazione itinerario con 1-2 segmenti (cambi/scali)
@@ -65,20 +69,21 @@ curl -X POST http://localhost:3000/api/tickets/purchase \
   -H "Content-Type: application/json" \
   -d '{
     "cityCode": "BRI",
-    "ticketTypeName": "Urban 90",
+    "ticketTypeId": 1,
     "customer": { "email": "demo@example.com", "fullName": "Demo User" },
     "passengers": [{ "fullName": "Demo Passenger", "birthDate": "1999-01-01" }]
   }'
 ```
 
-Fallback con `cityId`:
+Fallback con `cityId` + `agencyId` + nome ticket:
 
 ```bash
 curl -X POST http://localhost:3000/api/tickets/purchase \
   -H "Content-Type: application/json" \
   -d '{
     "cityId": 1,
-    "ticketTypeName": "Urban 90",
+    "agencyId": 1,
+    "ticketTypeName": "Biglietto 90 minuti",
     "customer": { "email": "demo2@example.com", "fullName": "Demo User 2" },
     "passengers": [{ "fullName": "Passenger 1" }, { "fullName": "Passenger 2" }]
   }'
@@ -96,12 +101,15 @@ curl -X POST http://localhost:3000/api/tickets/TKT-ABCDEF123456/validate \
   }'
 ```
 
-Validazione con body vuoto:
+Validazione tramite QR firmato:
 
 ```bash
-curl -X POST http://localhost:3000/api/tickets/TKT-ABCDEF123456/validate \
+curl -X POST http://localhost:3000/api/tickets/validate \
   -H "Content-Type: application/json" \
-  -d '{}'
+  -d '{
+    "qrToken": "gtfs1.eyJ2IjoxLCJ0eXAiOiJndGZzLXRpY2tldCIsLi4ufQ.xxx",
+    "validatorDevice": "turnstile-qr-01"
+  }'
 ```
 
 Storico prenotazioni per email:
@@ -168,6 +176,8 @@ Questo crea:
   - `data/gtfs/incoming/import_BRI.sql`
   - `data/gtfs/incoming/import_BOL.sql`
   - `db/extend_ticketing.sql`
+  - `db/agency_ticketing.sql`
+  - `db/seed_time_ticket_types.sql`
   - `db/indexes.sql`
 
 Stringa connessione:
@@ -195,21 +205,41 @@ Per una macchina nuova (es. il prof che clona il repo), `docker compose up -d po
 
 ## Database dump
 
-### Generare `db/dump.sql` con `pg_dump`
+### Script di rebuild `db/dump.sql`
 
-Se usi PostgreSQL locale:
+`db/dump.sql` e` uno script di rebuild del database finale del progetto. Non contiene solo dati demo, ma riallinea:
+
+- schema di base
+- import GTFS Bari
+- import GTFS Bologna
+- estensioni ticketing
+- configurazione agency-based
+- seed dei titoli a tempo
+- indici
+
+Questo approccio e` stato preferito a un `pg_dump` raw per mantenere il repository piu` leggibile e riproducibile.
+
+Se vuoi anche generare un dump PostgreSQL classico del database corrente, puoi comunque usare:
+
+Database locale:
 
 ```bash
-pg_dump -d gtfs_ticketing -f db/dump.sql
+pg_dump -d gtfs_ticketing -f db/dump_pg.sql
 ```
 
-Se usi il database Docker (`gtfs-postgres`):
+Database Docker (`gtfs-postgres`):
 
 ```bash
-docker exec -i gtfs-postgres pg_dump -U postgres -d gtfs_ticketing > db/dump.sql
+docker exec -i gtfs-postgres pg_dump -U postgres -d gtfs_ticketing > db/dump_pg.sql
 ```
 
-### Ripristino da dump con `psql`
+Nel repository e` disponibile anche una versione gia` generata del dump PostgreSQL classico:
+
+```text
+db/dump_pg.sql
+```
+
+### Ripristino con `psql`
 
 Database locale:
 
@@ -227,6 +257,7 @@ Get-Content db/dump.sql | docker exec -i gtfs-postgres psql -U postgres -d gtfs_
 
 - `docker compose down -v` rimuove anche il volume dati: al prossimo `up` riparte l'init completo (schema + import GTFS Bari/Bologna + estensioni + indici).
 - Il ripristino da `dump.sql` e l'init automatico sono alternative: usa l'uno o l'altro a seconda del flusso.
+- Se ti serve un dump PostgreSQL classico, puoi generarlo separatamente come `db/dump_pg.sql`.
 - Prima di dump/restore verifica che il container sia attivo:
 
 ```bash
@@ -240,8 +271,11 @@ gtfs-hub/
   db/
     schema.sql
     extend_ticketing.sql
+    agency_ticketing.sql
+    seed_time_ticket_types.sql
     indexes.sql
     dump.sql
+    dump_pg.sql
     import_gtfs.sql
   data/
     gtfs/
@@ -281,12 +315,14 @@ psql -d gtfs_ticketing -f db/schema.sql
 psql -d gtfs_ticketing -f data/gtfs/incoming/import_BRI.sql
 psql -d gtfs_ticketing -f data/gtfs/incoming/import_BOL.sql
 psql -d gtfs_ticketing -f db/extend_ticketing.sql
+psql -d gtfs_ticketing -f db/agency_ticketing.sql
+psql -d gtfs_ticketing -f db/seed_time_ticket_types.sql
 psql -d gtfs_ticketing -f db/indexes.sql
 ```
 
-### Opzione 2: import completo da dump
+### Opzione 2: rebuild completo da dump
 
-`db/dump.sql` ricrea lo schema `transport` da zero e poi carica i dati demo.
+`db/dump.sql` ricrea lo schema `transport` da zero e carica lo stato finale del database usato dal progetto.
 
 ```bash
 psql -d gtfs_ticketing -f db/dump.sql

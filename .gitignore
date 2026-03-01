@@ -25,3 +25,15 @@ next-env.d.ts
 # local upload artifacts
 data/gtfs/incoming/uploads/
 
+# heavy local GTFS source folders kept out of git; the repo retains import SQL scripts
+data/gtfs/incoming/BARI/
+data/gtfs/incoming/BARI_norm/
+data/gtfs/incoming/BOLOGNA/
+data/gtfs/incoming/BOLOGNA_norm/
+
+# optional large PostgreSQL raw dump
+db/dump_pg.sql
+
+# thesis material kept local, not versioned
+docs/tesi/
+
