@@ -169,6 +169,9 @@ async function main() {
     console.log("Dipendenze gia` presenti, salto npm install.");
   }
 
+  console.log("Verifica dataset bundled aggiuntivi...");
+  await run("node", ["scripts/import-bundled-gtfs.mjs"]);
+
   if (setupOnly) {
     console.log("Setup completato. Database attivo e dipendenze pronte.");
     return;

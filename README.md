@@ -33,6 +33,7 @@ Questo comando:
 - avvia PostgreSQL con Docker Compose
 - attende che il database sia pronto
 - installa le dipendenze npm se necessario
+- importa automaticamente il feed bundled di Cagliari se non e` ancora presente
 - avvia l'app in sviluppo su `http://localhost:3000`
 
 Alternativa equivalente tramite `npm`:
@@ -299,7 +300,7 @@ Get-Content db/dump.sql | docker exec -i gtfs-postgres psql -U postgres -d gtfs_
 - Il ripristino da `dump.sql` e l'init automatico sono alternative: usa l'uno o l'altro a seconda del flusso.
 - Se ti serve un dump PostgreSQL classico, puoi generarlo separatamente come `db/dump_pg.sql`.
 - Nel repository sono inclusi anche i dataset normalizzati `BARI_norm` e `BOLOGNA_norm`, necessari per rendere il rebuild Bari/Bologna realmente riproducibile.
-- E` incluso anche `data/gtfs/incoming/CAG_sample.zip`, un feed GTFS reale di Cagliari utilizzabile per testare l'import manuale dalla UI o dagli script.
+- E` incluso anche `data/gtfs/incoming/CAG_sample.zip`, un feed GTFS reale di Cagliari che il bootstrap del progetto importa automaticamente se la citta` non e` ancora presente nel database.
 - Prima di dump/restore verifica che il container sia attivo:
 
 ```bash
@@ -373,11 +374,12 @@ psql -d gtfs_ticketing -f db/dump.sql
 
 ## Import feed GTFS reali (multi-citta)
 
-Nel repository e` gia` presente anche un feed di esempio pronto per l'import manuale:
+Nel repository e` gia` presente anche un feed di esempio usato dal bootstrap automatico:
 
 - `data/gtfs/incoming/CAG_sample.zip` per Cagliari
 
-Puoi usarlo direttamente dalla UI (`POST /api/gtfs/upload`) oppure come input per gli script di import.
+Se esegui `node scripts/run-project.mjs`, il progetto verifica se `CAG` esiste gia` nel database e, in caso contrario, importa automaticamente questo feed.
+In alternativa, puoi usarlo anche direttamente dalla UI (`POST /api/gtfs/upload`).
 
 1. Inserisci feed GTFS `.zip` (o file `.txt` estratti) in:
 - `data/gtfs/raw/MIL/`
