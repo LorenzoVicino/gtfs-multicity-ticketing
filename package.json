@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "bootstrap": "node scripts/run-project.mjs",
+    "bootstrap:setup": "node scripts/run-project.mjs --setup-only"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",

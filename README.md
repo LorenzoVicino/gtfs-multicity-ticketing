@@ -15,13 +15,52 @@ Questa cartella ora include anche una web app Next.js con:
 
 ### Setup rapido
 
+Prerequisiti minimi:
+
+- `Node.js` + `npm`
+- `Docker` + `Docker Compose`
+
+Comando consigliato, cross-platform, in un solo passaggio:
+
+```bash
+node scripts/run-project.mjs
+```
+
+Questo comando:
+
+- crea `.env.local` da `.env.example` se manca
+- avvia PostgreSQL con Docker Compose
+- attende che il database sia pronto
+- installa le dipendenze npm se necessario
+- avvia l'app in sviluppo su `http://localhost:3000`
+
+Alternativa equivalente tramite `npm`:
+
+```bash
+npm run bootstrap
+```
+
+Se vuoi preparare tutto senza lasciare aperto il server di sviluppo:
+
+```bash
+node scripts/run-project.mjs --setup-only
+```
+
+Oppure:
+
+```bash
+npm run bootstrap:setup
+```
+
+### Setup manuale
+
 1. Configura variabili ambiente:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Su Windows PowerShell:
+Su Windows:
 
 ```powershell
 Copy-Item .env.example .env.local
