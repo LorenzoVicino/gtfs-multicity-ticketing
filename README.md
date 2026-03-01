@@ -34,6 +34,7 @@ Questo comando:
 - attende che il database sia pronto
 - installa le dipendenze npm se necessario
 - importa automaticamente il feed bundled di Cagliari se non e` ancora presente
+- riallinea il catalogo ticket base per le agency gia` presenti, inclusa Cagliari se era stata importata in precedenza
 - avvia l'app in sviluppo su `http://localhost:3000`
 
 Alternativa equivalente tramite `npm`:
@@ -378,7 +379,11 @@ Nel repository e` gia` presente anche un feed di esempio usato dal bootstrap aut
 
 - `data/gtfs/incoming/CAG_sample.zip` per Cagliari
 
-Se esegui `node scripts/run-project.mjs`, il progetto verifica se `CAG` esiste gia` nel database e, in caso contrario, importa automaticamente questo feed.
+Se esegui `node scripts/run-project.mjs`, il progetto verifica se `CAG` esiste gia` nel database:
+
+- se manca, importa automaticamente il feed
+- se esiste gia`, riallinea comunque il catalogo ticket base per evitare agency senza tariffe acquistabili
+
 In alternativa, puoi usarlo anche direttamente dalla UI (`POST /api/gtfs/upload`).
 
 1. Inserisci feed GTFS `.zip` (o file `.txt` estratti) in:

@@ -198,6 +198,33 @@ async function cityExists(cityCode) {
   }
 }
 
+async function ensureTicketCatalog() {
+  await spawnPromise("docker", [
+    "run",
+    "--rm",
+    "--network",
+    "container:gtfs-postgres",
+    "-e",
+    "PGPASSWORD=postgres",
+    "-v",
+    `${repoRoot}:/work`,
+    "-w",
+    "/work",
+    "postgres:16",
+    "psql",
+    "-h",
+    "localhost",
+    "-U",
+    "postgres",
+    "-d",
+    "gtfs_ticketing",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-f",
+    "/work/db/seed_time_ticket_types.sql"
+  ]);
+}
+
 async function importZip({ zipPath, cityCode, cityName, serviceDate }) {
   const uploadsRoot = path.join(repoRoot, "data", "gtfs", "incoming", "uploads", "bundled");
   await fs.mkdir(uploadsRoot, { recursive: true });
@@ -305,13 +332,18 @@ async function main() {
   }
 
   if (await cityExists(cityCode)) {
-    console.log("Cagliari gia` presente nel database, salto import automatico.");
+    console.log("Cagliari gia` presente nel database, salto reimport del feed.");
+    console.log("Riallineamento catalogo ticket per le agency esistenti...");
+    await ensureTicketCatalog();
+    console.log("Catalogo ticket riallineato.");
     return;
   }
 
   const serviceDate = new Date().toISOString().slice(0, 10);
   console.log("Import automatico del feed bundled di Cagliari...");
   await importZip({ zipPath, cityCode, cityName, serviceDate });
+  console.log("Riallineamento catalogo ticket per le agency importate...");
+  await ensureTicketCatalog();
   console.log("Import Cagliari completato.");
 }
 
