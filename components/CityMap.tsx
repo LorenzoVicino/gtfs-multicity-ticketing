@@ -2,7 +2,7 @@
 
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -14,12 +14,21 @@ import {
   useMapEvents,
   ZoomControl
 } from "react-leaflet";
+import { QrTicket } from "@/components/QrTicket";
+import { getTicketDisplayName, getTicketDurationBadge, getTicketMetaLabel } from "@/lib/ticket-display";
 import type { CityGtfsPayload, StopPoint } from "@/types/gtfs";
+import type { CityTicketCatalog } from "@/types/ticketing";
 
 type Props = {
   payload: CityGtfsPayload | null;
   activeRouteIds: number[];
   focusedRouteId: number | null;
+  onStopPanelChange?: (isOpen: boolean) => void;
+  onPurchaseCompleted?: (payload: {
+    email: string;
+    ticketCode: string | null;
+    purchase: PurchaseResponse;
+  }) => void;
 };
 
 type ClusterPoint = {
@@ -57,8 +66,21 @@ type PurchaseStatus = "idle" | "loading" | "success" | "error";
 type PurchaseResponse = {
   bookingCode: string;
   totalCents: number;
-  tickets: Array<{ ticketCode: string; passengerName: string }>;
+  agency: {
+    agencyId: number;
+    gtfsAgencyId: string;
+    name: string;
+  };
+  ticketType: {
+    ticketTypeId: number;
+    name: string;
+    durationMinutes: number;
+    priceCents: number;
+  };
+  tickets: Array<{ ticketCode: string; passengerName: string; qrToken: string }>;
 };
+
+const OVERLAY_EXIT_MS = 240;
 
 function gradientFromSlices(slices: Array<{ color: string; ratio: number }>): string {
   if (slices.length === 0) {
@@ -228,7 +250,7 @@ function FitBounds({ payload, activeRouteIds }: { payload: CityGtfsPayload | nul
   return null;
 }
 
-export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
+export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelChange, onPurchaseCompleted }: Props) {
   const [zoom, setZoom] = useState(6);
   const [selectedStop, setSelectedStop] = useState<SelectedStop | null>(null);
   const [departuresStatus, setDeparturesStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -237,14 +259,21 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
   const [serviceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const departuresCacheRef = useRef<Map<string, StopDeparturesResponse>>(new Map());
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
+  const [isPurchaseClosing, setIsPurchaseClosing] = useState(false);
   const [purchaseStatus, setPurchaseStatus] = useState<PurchaseStatus>("idle");
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResponse | null>(null);
+  const [ticketCatalogStatus, setTicketCatalogStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [ticketCatalogError, setTicketCatalogError] = useState<string | null>(null);
+  const [ticketCatalog, setTicketCatalog] = useState<CityTicketCatalog | null>(null);
+  const [selectedAgencyId, setSelectedAgencyId] = useState<number | null>(null);
+  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState<number | null>(null);
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerFullName, setCustomerFullName] = useState("");
   const [passengerFullName, setPassengerFullName] = useState("");
   const [passengerBirthDate, setPassengerBirthDate] = useState("");
   const [isPassengerNameManual, setIsPassengerNameManual] = useState(false);
+  const purchaseCloseTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setSelectedStop(null);
@@ -252,7 +281,51 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
     setDeparturesError(null);
     setDeparturesData([]);
     setIsPurchaseOpen(false);
+    setIsPurchaseClosing(false);
+    setTicketCatalogStatus("idle");
+    setTicketCatalogError(null);
+    setTicketCatalog(null);
+    setSelectedAgencyId(null);
+    setSelectedTicketTypeId(null);
   }, [payload?.city.id]);
+
+  useEffect(() => {
+    return () => {
+      if (purchaseCloseTimerRef.current !== null) {
+        window.clearTimeout(purchaseCloseTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isPurchaseOpen || isPurchaseClosing) {
+      return;
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsPurchaseClosing(true);
+        purchaseCloseTimerRef.current = window.setTimeout(() => {
+          setIsPurchaseOpen(false);
+          setIsPurchaseClosing(false);
+          setPurchaseStatus("idle");
+          setPurchaseError(null);
+          setPurchaseResult(null);
+          setCustomerEmail("");
+          setCustomerFullName("");
+          setPassengerFullName("");
+          setPassengerBirthDate("");
+          setIsPassengerNameManual(false);
+          purchaseCloseTimerRef.current = null;
+        }, OVERLAY_EXIT_MS);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isPurchaseClosing, isPurchaseOpen]);
 
   useEffect(() => {
     if (!isPassengerNameManual) {
@@ -266,7 +339,8 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
     }
 
     const cityId = payload.city.id;
-    const cacheKey = `${cityId}:${selectedStop.stopId}:${serviceDate}`;
+    const currentStop = selectedStop;
+    const cacheKey = `${cityId}:${currentStop.stopId}:${serviceDate}`;
     const cached = departuresCacheRef.current.get(cacheKey);
     if (cached) {
       setDeparturesStatus("ready");
@@ -283,7 +357,7 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
         setDeparturesError(null);
 
         const response = await fetch(
-          `/api/stops/departures?cityId=${cityId}&stopId=${selectedStop.stopId}&serviceDate=${serviceDate}`,
+          `/api/stops/departures?cityId=${cityId}&stopId=${currentStop.stopId}&serviceDate=${serviceDate}`,
           { signal: controller.signal }
         );
         const json = (await response.json()) as StopDeparturesResponse | { error?: string };
@@ -311,6 +385,57 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
       controller.abort();
     };
   }, [payload, selectedStop, serviceDate]);
+
+  useEffect(() => {
+    if (!payload) {
+      return;
+    }
+
+    const cityCode = payload.city.cityCode;
+    const controller = new AbortController();
+
+    async function loadTicketCatalog() {
+      try {
+        setTicketCatalogStatus("loading");
+        setTicketCatalogError(null);
+
+        const response = await fetch(`/api/cities/${cityCode}/tickets`, {
+          signal: controller.signal
+        });
+        const json = (await response.json()) as CityTicketCatalog | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(("error" in json && json.error) || "Errore caricamento catalogo ticket");
+        }
+
+        const catalog = json as CityTicketCatalog;
+        setTicketCatalog(catalog);
+        setTicketCatalogStatus("ready");
+
+        const firstAgency = catalog.agencies.find((agency) => agency.ticketTypes.some((ticketType) => ticketType.active));
+        const firstTicketType = firstAgency?.ticketTypes.find((ticketType) => ticketType.active) ?? null;
+
+        setSelectedAgencyId(firstAgency?.agencyId ?? null);
+        setSelectedTicketTypeId(firstTicketType?.ticketTypeId ?? null);
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setTicketCatalogStatus("error");
+        setTicketCatalogError(error instanceof Error ? error.message : "Errore caricamento catalogo ticket");
+        setTicketCatalog(null);
+        setSelectedAgencyId(null);
+        setSelectedTicketTypeId(null);
+      }
+    }
+
+    void loadTicketCatalog();
+
+    return () => {
+      controller.abort();
+    };
+  }, [payload]);
 
   function formatDepartureTime(departureTs: string): string {
     const date = new Date(departureTs);
@@ -370,8 +495,48 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
     [activeStops, zoom, stopColorWeights]
   );
   const activeSet = useMemo(() => new Set(activeRouteIds), [activeRouteIds]);
+  const visibleDepartures = useMemo(
+    () => departuresData.filter((departure) => activeSet.has(departure.routeId)),
+    [activeSet, departuresData]
+  );
+  const availableAgencies = useMemo(() => ticketCatalog?.agencies ?? [], [ticketCatalog]);
+  const agenciesWithTicketTypes = useMemo(
+    () => availableAgencies.filter((agency) => agency.ticketTypes.some((ticketType) => ticketType.active)),
+    [availableAgencies]
+  );
+  const selectedAgency = useMemo(
+    () => availableAgencies.find((agency) => agency.agencyId === selectedAgencyId) ?? null,
+    [availableAgencies, selectedAgencyId]
+  );
+  const availableTicketTypes = useMemo(
+    () => (selectedAgency ? selectedAgency.ticketTypes.filter((ticketType) => ticketType.active) : []),
+    [selectedAgency]
+  );
+  const selectedTicketType = useMemo(
+    () => availableTicketTypes.find((ticketType) => ticketType.ticketTypeId === selectedTicketTypeId) ?? null,
+    [availableTicketTypes, selectedTicketTypeId]
+  );
+  const hasAnyTicketTypes = agenciesWithTicketTypes.length > 0;
 
-  function resetPurchaseModal() {
+  useEffect(() => {
+    if (!selectedStop) {
+      return;
+    }
+
+    const stopStillVisible = activeStops.some((stop) => stop.stopId === selectedStop.stopId);
+    if (!stopStillVisible) {
+      setSelectedStop(null);
+      setDeparturesStatus("idle");
+      setDeparturesError(null);
+      setDeparturesData([]);
+    }
+  }, [activeStops, selectedStop]);
+
+  useEffect(() => {
+    onStopPanelChange?.(selectedStop !== null);
+  }, [onStopPanelChange, selectedStop]);
+
+  const resetPurchaseModal = useCallback(() => {
     setPurchaseStatus("idle");
     setPurchaseError(null);
     setPurchaseResult(null);
@@ -380,17 +545,27 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
     setPassengerFullName("");
     setPassengerBirthDate("");
     setIsPassengerNameManual(false);
-  }
+  }, []);
 
   function openPurchaseModal() {
+    if (purchaseCloseTimerRef.current !== null) {
+      window.clearTimeout(purchaseCloseTimerRef.current);
+      purchaseCloseTimerRef.current = null;
+    }
     resetPurchaseModal();
+    setIsPurchaseClosing(false);
     setIsPurchaseOpen(true);
   }
 
-  function closePurchaseModal() {
-    setIsPurchaseOpen(false);
-    resetPurchaseModal();
-  }
+  const closePurchaseModal = useCallback(() => {
+    setIsPurchaseClosing(true);
+    purchaseCloseTimerRef.current = window.setTimeout(() => {
+      setIsPurchaseOpen(false);
+      setIsPurchaseClosing(false);
+      resetPurchaseModal();
+      purchaseCloseTimerRef.current = null;
+    }, OVERLAY_EXIT_MS);
+  }, [resetPurchaseModal]);
 
   async function handlePurchaseSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -411,6 +586,12 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
       return;
     }
 
+    if (!selectedAgency || !selectedTicketType) {
+      setPurchaseStatus("error");
+      setPurchaseError("Seleziona agency e tipologia di biglietto");
+      return;
+    }
+
     try {
       setPurchaseStatus("loading");
       setPurchaseError(null);
@@ -421,7 +602,8 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cityId: payload.city.id,
-          ticketTypeName: "Urban 90",
+          agencyId: selectedAgency.agencyId,
+          ticketTypeId: selectedTicketType.ticketTypeId,
           customer: {
             email: trimmedEmail,
             fullName: trimmedCustomerName
@@ -444,6 +626,11 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
 
       setPurchaseResult(data as PurchaseResponse);
       setPurchaseStatus("success");
+      onPurchaseCompleted?.({
+        email: trimmedEmail,
+        ticketCode: (data as PurchaseResponse).tickets[0]?.ticketCode ?? null,
+        purchase: data as PurchaseResponse
+      });
     } catch (error) {
       setPurchaseStatus("error");
       setPurchaseError(error instanceof Error ? error.message : "Errore acquisto ticket");
@@ -525,8 +712,18 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
         )}
       </MapContainer>
 
+      {payload ? (
+        <button
+          type="button"
+          className={`map-buy ${selectedStop ? "map-floating-shifted" : ""}`}
+          onClick={openPurchaseModal}
+        >
+          Acquista biglietto
+        </button>
+      ) : null}
+
       {selectedStop ? (
-        <aside className="stop-departures-panel">
+        <aside className="stop-departures-panel map-ui-enter map-ui-delay-2">
           <div className="stop-departures-head">
             <p className="stop-departures-title">{selectedStop.stopName}</p>
             <button type="button" className="stop-departures-close" onClick={() => setSelectedStop(null)}>
@@ -545,13 +742,13 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
             </p>
           ) : null}
 
-          {departuresStatus === "ready" && departuresData.length === 0 ? (
+          {departuresStatus === "ready" && visibleDepartures.length === 0 ? (
             <p className="stop-departures-state">Nessuna partenza trovata</p>
           ) : null}
 
-          {departuresStatus === "ready" && departuresData.length > 0 ? (
+          {departuresStatus === "ready" && visibleDepartures.length > 0 ? (
             <ul className="stop-departures-list">
-              {departuresData.map((departure) => (
+              {visibleDepartures.map((departure) => (
                 <li
                   key={`${departure.tripId}-${departure.routeId}-${departure.departureTs}`}
                   className="stop-departures-item"
@@ -563,17 +760,26 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
             </ul>
           ) : null}
 
-          <button type="button" className="stop-buy-button" onClick={openPurchaseModal}>
-            Compra biglietto 90 min
-          </button>
         </aside>
       ) : null}
 
       {isPurchaseOpen ? (
-        <div className="ticket-modal-overlay" role="dialog" aria-modal="true">
+        <div
+          className={`ticket-modal-overlay ${isPurchaseClosing ? "map-ui-exit" : "map-ui-enter map-ui-delay-1"}`}
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closePurchaseModal();
+            }
+          }}
+        >
           <div className="ticket-modal">
             <div className="ticket-modal-head">
-              <p className="ticket-modal-title">Compra biglietto 90 min</p>
+              <div>
+                <p className="ticket-modal-title">Acquista biglietto digitale</p>
+                <p className="ticket-modal-subtitle">Scegli agency e tariffa a tempo per la citta selezionata.</p>
+              </div>
               <button type="button" className="ticket-modal-close" onClick={closePurchaseModal}>
                 Chiudi
               </button>
@@ -582,6 +788,15 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
             {purchaseStatus === "success" && purchaseResult ? (
               <div className="ticket-modal-result">
                 <p className="ticket-modal-success">Acquisto completato</p>
+                <p className="ticket-modal-line">Agency: {purchaseResult.agency.name}</p>
+                <p className="ticket-modal-line">
+                  Titolo: {getTicketDisplayName(purchaseResult.ticketType.name, purchaseResult.ticketType.durationMinutes)} · {" "}
+                  {getTicketMetaLabel(
+                    purchaseResult.ticketType.name,
+                    purchaseResult.ticketType.durationMinutes,
+                    purchaseResult.ticketType.priceCents
+                  )}
+                </p>
                 <p className="ticket-modal-line">Booking: {purchaseResult.bookingCode}</p>
                 <p className="ticket-modal-line">Ticket: {purchaseResult.tickets[0]?.ticketCode ?? "-"}</p>
                 <a
@@ -596,9 +811,82 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
                 <code className="ticket-modal-code">
                   POST /api/tickets/{purchaseResult.tickets[0]?.ticketCode ?? "TICKET_CODE"}/validate
                 </code>
+                {purchaseResult.tickets[0]?.qrToken ? (
+                  <div className="ticket-modal-qr-shell">
+                    <QrTicket value={purchaseResult.tickets[0].qrToken} size={184} className="ticket-modal-qr" />
+                  </div>
+                ) : null}
+                <p className="ticket-modal-help">QR firmato:</p>
+                <code className="ticket-modal-code">{purchaseResult.tickets[0]?.qrToken ?? "-"}</code>
               </div>
             ) : (
               <form className="ticket-modal-form" onSubmit={handlePurchaseSubmit}>
+                <div className="ticket-modal-section">
+                  <p className="ticket-modal-section-title">Agency</p>
+                  {availableAgencies.length > 0 ? (
+                    <div className="ticket-modal-choice-grid">
+                      {availableAgencies.map((agency) => (
+                        <button
+                          key={agency.agencyId}
+                          type="button"
+                          className={`ticket-modal-choice ${
+                            selectedAgencyId === agency.agencyId ? "ticket-modal-choice-active" : ""
+                          }`}
+                          onClick={() => {
+                            const firstTicketType = agency.ticketTypes.find((ticketType) => ticketType.active) ?? null;
+                            setSelectedAgencyId(agency.agencyId);
+                            setSelectedTicketTypeId(firstTicketType?.ticketTypeId ?? null);
+                          }}
+                          disabled={ticketCatalogStatus !== "ready"}
+                        >
+                          <span className="ticket-modal-choice-title">{agency.agencyName}</span>
+                          <span className="ticket-modal-choice-meta">
+                            {agency.ticketTypes.filter((ticketType) => ticketType.active).length} tariffe a tempo disponibili
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : ticketCatalogStatus === "ready" ? (
+                    <div className="ticket-modal-empty-state">
+                      Nessuna agency disponibile per la citta selezionata.
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="ticket-modal-section">
+                  <p className="ticket-modal-section-title">Tariffa a tempo</p>
+                  {availableTicketTypes.length > 0 ? (
+                    <div className="ticket-modal-choice-grid">
+                      {availableTicketTypes.map((ticketType) => (
+                        <button
+                          key={ticketType.ticketTypeId}
+                          type="button"
+                          className={`ticket-modal-choice ${
+                            selectedTicketTypeId === ticketType.ticketTypeId ? "ticket-modal-choice-active" : ""
+                          }`}
+                          onClick={() => setSelectedTicketTypeId(ticketType.ticketTypeId)}
+                          disabled={ticketCatalogStatus !== "ready"}
+                        >
+                          <span className="ticket-modal-choice-title">
+                            {getTicketDisplayName(ticketType.name, ticketType.durationMinutes)}
+                          </span>
+                          <span className="ticket-modal-choice-meta">
+                            {getTicketMetaLabel(ticketType.name, ticketType.durationMinutes, ticketType.priceCents)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : ticketCatalogStatus === "ready" && selectedAgency ? (
+                    <div className="ticket-modal-empty-state">
+                      Nessuna tariffa a tempo disponibile per questa agency.
+                    </div>
+                  ) : ticketCatalogStatus === "ready" && !hasAnyTicketTypes ? (
+                    <div className="ticket-modal-empty-state">
+                      Nessuna tariffa acquistabile disponibile per la citta selezionata.
+                    </div>
+                  ) : null}
+                </div>
+
                 <label className="ticket-modal-field">
                   <span>Email cliente</span>
                   <input
@@ -641,11 +929,41 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId }: Props) {
                   />
                 </label>
 
+                {selectedAgency && selectedTicketType ? (
+                  <div className="ticket-modal-summary">
+                    <p className="ticket-modal-line">Operatore: {selectedAgency.agencyName}</p>
+                    <p className="ticket-modal-line">
+                      Tariffa: {getTicketDisplayName(selectedTicketType.name, selectedTicketType.durationMinutes)}
+                    </p>
+                    <p className="ticket-modal-line">
+                      Totale: €{(selectedTicketType.priceCents / 100).toFixed(2)} · validita {getTicketDurationBadge(selectedTicketType.durationMinutes)}
+                    </p>
+                  </div>
+                ) : null}
+
+                {ticketCatalogStatus === "loading" ? (
+                  <p className="ticket-modal-help">Caricamento catalogo ticket...</p>
+                ) : null}
+
+                {ticketCatalogStatus === "error" ? (
+                  <p className="ticket-modal-error">{ticketCatalogError ?? "Errore catalogo ticket"}</p>
+                ) : null}
+
                 {purchaseStatus === "error" ? (
                   <p className="ticket-modal-error">{purchaseError ?? "Errore acquisto"}</p>
                 ) : null}
 
-                <button type="submit" className="ticket-modal-submit" disabled={purchaseStatus === "loading"}>
+                <button
+                  type="submit"
+                  className="ticket-modal-submit"
+                  disabled={
+                    purchaseStatus === "loading" ||
+                    ticketCatalogStatus !== "ready" ||
+                    !hasAnyTicketTypes ||
+                    !selectedAgency ||
+                    !selectedTicketType
+                  }
+                >
                   {purchaseStatus === "loading" ? "Acquisto in corso..." : "Conferma acquisto"}
                 </button>
               </form>

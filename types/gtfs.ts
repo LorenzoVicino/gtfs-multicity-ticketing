@@ -14,6 +14,8 @@ export type StopPoint = {
 
 export type RouteLine = {
   routeId: number;
+  agencyId: number | null;
+  agencyName: string | null;
   lineName: string;
   shortName: string | null;
   longName: string | null;

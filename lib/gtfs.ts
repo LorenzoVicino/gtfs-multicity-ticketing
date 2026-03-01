@@ -17,6 +17,8 @@ type StopRow = {
 
 type RoutePointRow = {
   route_id: number;
+  agency_id: number | null;
+  agency_name: string | null;
   short_name: string | null;
   long_name: string | null;
   line_name: string;
@@ -212,6 +214,8 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
       SELECT
         t.trip_id,
         t.route_id,
+        r.agency_id,
+        a.name AS agency_name,
         r.short_name,
         r.long_name,
         r.color_hex,
@@ -224,10 +228,15 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
       JOIN transport.route r
         ON r.route_id = t.route_id
        AND r.city_id = t.city_id
+      LEFT JOIN transport.agency a
+        ON a.agency_id = r.agency_id
+       AND a.city_id = r.city_id
       WHERE t.city_id = $1
     )
     SELECT
       rt.route_id,
+      rt.agency_id,
+      rt.agency_name,
       rt.short_name,
       rt.long_name,
       rt.line_name,
@@ -291,6 +300,8 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
     const stats = statsByRouteId.get(point.route_id) ?? { tripsCount: 0, stopEvents: 0 };
     const item = groupedRoutes.get(point.route_id) ?? {
       routeId: point.route_id,
+      agencyId: point.agency_id,
+      agencyName: point.agency_name,
       lineName: point.line_name,
       shortName: point.short_name,
       longName: point.long_name,
