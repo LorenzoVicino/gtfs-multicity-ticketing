@@ -1,0 +1,67 @@
+route_id,agency_id,route_short_name,route_long_name,route_type,route_color,route_text_color
+01,Amtab  S.p.A,01,Bari Centrale - Santo Spirito ,3,FFFFFF,000000
+02,Amtab  S.p.A,02,Piscine Comunali - C.S. Polivalente,3,7CFC00,000000
+02/,Amtab  S.p.A,02/,Piscine Comunali - S.Anna,3,5F9EA0,000000
+03,Amtab  S.p.A,03,Bari Centrale - Ospedale (S.Paolo),3,DEB887,000000
+04,Amtab  S.p.A,04,Bari Centrale - Carbonara/Ceglie,3,FF7F50,000000
+06,Amtab  S.p.A,06,Piscine Comunali - Parco Domingo,3,6495ED,000000
+07,Amtab  S.p.A,07,Bari Centrale - Dep. Amtab,3,DC143C,000000
+09,Amtab  S.p.A,09,Policlinico - C.S. Polivalente ,3,00CED1,000000
+10,Amtab  S.p.A,10,Parco Domingo - Parco Domingo,3,00BFFF,000000
+11,Amtab  S.p.A,11,Bari Centrale - Loseto,3,E9967A,000000
+11/,Amtab  S.p.A,11/,Bari Centrale - Loseto,3,8FBC8F,000000
+12,Amtab  S.p.A,12,Bari Centrale - Torre a Mare,3,1E90FF,000000
+12/,Amtab  S.p.A,12/,Bari Centrale - Torre a Mare,3,B22222,000000
+13,Amtab  S.p.A,13,Bari Centrale - Dalfino (S.Paolo),3,FFFAF0,000000
+14,Amtab  S.p.A,14,Oleandri Z.I. - C.S. Polivalente,3,228B22,000000
+16,Amtab  S.p.A,16,Bari Centrale - Aeroporto,3,DCDCDC,000000
+19,Amtab  S.p.A,19,Bari Centrale - San Pio,3,F8F8FF,000000
+20,Amtab  S.p.A,20,Bari Centrale - Parco Adria,3,FFD700,000000
+21,Amtab  S.p.A,21,Bari Centrale - Ceglie,3,DAA520,000000
+22,Amtab  S.p.A,22,Piscine Comunali - Mungivacca,3,808080,000000
+23,Amtab  S.p.A,23,Circolare Regione Puglia,3,ADFF2F,000000
+25,Amtab  S.p.A,25,Luigi di Savoia - Oleandri Z.I.,3,CD5C5C,000000
+27,Amtab  S.p.A,27,Piscine Comunali - Parco Domingo,3,FFF8DC,000000
+30,Amtab  S.p.A,30,Loseto - Margherite Z.I.,3,FFFFF0,000000
+321,Amtab  S.p.A,321,Servizio Scolastico,3,48D1CC,000000
+322,Amtab  S.p.A,322,Servizio Scolastico,3,FFEFD5,000000
+323,Amtab  S.p.A,323,Servizio Scolastico,3,4169E1,000000
+324,Amtab  S.p.A,324,Servizio Scolastico,3,F4A460,000000
+325,Amtab  S.p.A,325,Servizio Scolastico,3,00FF7F,000000
+326,Amtab  S.p.A,326,Servizio Scolastico,3,6B8E23,000000
+327,Amtab  S.p.A,327,Servizio Scolastico,3,AFEEEE,000000
+328,Amtab  S.p.A,328,Servizio Scolastico,3,DA70D6,000000
+329,Amtab  S.p.A,329,Servizio Scolastico,3,D2B48C,000000
+32A,Amtab  S.p.A,32A,Servizio Scolastico,3,FF4500,000000
+32C,Amtab  S.p.A,32C,Servizio Scolastico,3,4682B4,000000
+32D,Amtab  S.p.A,32D,Servizio Scolastico,3,00FA9A,000000
+32E,Amtab  S.p.A,32E,Servizio Scolastico,3,98FB98,000000
+32F,Amtab  S.p.A,32F,Servizio Scolastico,3,CD853F,000000
+32G,Amtab  S.p.A,32G,Servizio Scolastico,3,808000,000000
+32H,Amtab  S.p.A,32H,Servizio Scolastico,3,FFDEAD,000000
+32J,Amtab  S.p.A,32J,Servizio Scolastico,3,F4A460,000000
+32L,Amtab  S.p.A,32L,Servizio Scolastico,3,8B4513,000000
+32M,Amtab  S.p.A,32M,Servizio Scolastico,3,4169E1,000000
+32N,Amtab  S.p.A,32N,Servizio Scolastico,3,A0522D,000000
+32P,Amtab  S.p.A,32P,Servizio Scolastico,3,FFDEAD,000000
+32R,Amtab  S.p.A,32R,Servizio Scolastico,3,EEE8AA,000000
+32S,Amtab  S.p.A,32S,Servizio Scolastico,3,4682B4,000000
+32T,Amtab  S.p.A,32T,Servizio Scolastico,3,FF6347,000000
+32V,Amtab  S.p.A,32V,Servizio Scolastico,3,40E0D0,000000
+32X,Amtab  S.p.A,32X,Servizio Scolastico,3,87CEEB,000000
+32Y,Amtab  S.p.A,32Y,Servizio Scolastico,3,CD853F,000000
+33,Amtab  S.p.A,33,Dep. Amtab - San Pio,3,F0E68C,000000
+35,Amtab  S.p.A,35,Circolare Carrassi - Policlinico,3,E6E6FA,000000
+42,Amtab  S.p.A,42,Piscine Comunali - P&R Pane&Pomodoro,3,FFF0F5,000000
+50,Amtab  S.p.A,50,Circolare Porto,3,FFFACD,000000
+53,Amtab  S.p.A,53,Bari Centrale - De Blasi (S.Paolo),3,ADD8E6,000000
+61,Amtab  S.p.A,61,San Pio - Margherite Z.I.,3,E0FFFF,000000
+71,Amtab  S.p.A,71,Bari Centrale - S.Caterina,3,66CDAA,000000
+A,Amtab  S.p.A,A,P&R V.Veneto,3,FF8C00,000000
+AB,Amtab  S.p.A,AB,Circolare Notturna,3,008000,000000
+B,Amtab  S.p.A,B,P&R Pane Pomodoro,3,008080,000000
+C,Amtab  S.p.A,C,P&R 2 Giugno ,3,00FFFF,000000
+D,Amtab  S.p.A,D,Circolare Tribunale,3,808080,000000
+E,Amtab  S.p.A,E,P&R Polipark ,3,B8860B,000000
+H,Amtab  S.p.A,H,Navetta Policlinico,3,A52A2A,000000
+PJ,Amtab  S.p.A,PJ,Circolare C.S. Polivalente ,3,FF0000,000000

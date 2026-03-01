@@ -298,6 +298,8 @@ Get-Content db/dump.sql | docker exec -i gtfs-postgres psql -U postgres -d gtfs_
 - `docker compose down -v` rimuove anche il volume dati: al prossimo `up` riparte l'init completo (schema + import GTFS Bari/Bologna + estensioni + indici).
 - Il ripristino da `dump.sql` e l'init automatico sono alternative: usa l'uno o l'altro a seconda del flusso.
 - Se ti serve un dump PostgreSQL classico, puoi generarlo separatamente come `db/dump_pg.sql`.
+- Nel repository sono inclusi anche i dataset normalizzati `BARI_norm` e `BOLOGNA_norm`, necessari per rendere il rebuild Bari/Bologna realmente riproducibile.
+- E` incluso anche `data/gtfs/incoming/CAG_sample.zip`, un feed GTFS reale di Cagliari utilizzabile per testare l'import manuale dalla UI o dagli script.
 - Prima di dump/restore verifica che il container sia attivo:
 
 ```bash
@@ -322,6 +324,7 @@ gtfs-hub/
       incoming/
         BARI_norm/
         BOLOGNA_norm/
+        CAG_sample.zip
         import_BRI.sql
         import_BOL.sql
   scripts/
@@ -369,6 +372,12 @@ psql -d gtfs_ticketing -f db/dump.sql
 ```
 
 ## Import feed GTFS reali (multi-citta)
+
+Nel repository e` gia` presente anche un feed di esempio pronto per l'import manuale:
+
+- `data/gtfs/incoming/CAG_sample.zip` per Cagliari
+
+Puoi usarlo direttamente dalla UI (`POST /api/gtfs/upload`) oppure come input per gli script di import.
 
 1. Inserisci feed GTFS `.zip` (o file `.txt` estratti) in:
 - `data/gtfs/raw/MIL/`

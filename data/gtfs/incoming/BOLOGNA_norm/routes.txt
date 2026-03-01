@@ -1,0 +1,241 @@
+route_id,agency_id,route_short_name,route_long_name,route_type,route_color,route_text_color
+1,TPERBO,1,Circolare Sinistra_Stazione - Zolino - Ospedale - Pedagna - Stazione - Saffi CUP - Piscina - Rivazza - Campanella - Stazione,3,FFFFFF,000000
+101,TPERBO,101,Bologna - Castel San Pietro Terme - Imola,3,FFFFFF,000000
+103,TPERBO,103,Piancaldoli - Castel San Pietro Terme,3,FFFFFF,000000
+104,TPERBO,104,Castel del Rio - Osp. Nuovo - Stazione F.S. - V. Di Vittorio,3,FFFFFF,000000
+106,TPERBO,106,Bologna - Z.I. Ponte Rizzoli,3,FFFFFF,000000
+11,TPERBO,11,ITC Luxemburg / Bertalia / Arcoveggio Giardini - Rotonda Corelli / Ponticella,3,FFFFFF,000000
+110,TPERBO,110,Castel San Pietro Terme Stazione - Montecalderaro,3,FFFFFF,000000
+111,TPERBO,111,Varignana - Osteria Grande,3,FFFFFF,000000
+112,TPERBO,112,Castel San Pietro Terme Stazione - Castel San Pietro Terme,3,FFFFFF,000000
+113,TPERBO,113,Castel San Pietro Terme Stazione - Scania - Castel San Pietro Terme,3,FFFFFF,000000
+114,TPERBO,114,Ponte Quaderna - Castel San Pietro Terme Scuole,3,FFFFFF,000000
+116,TPERBO,116,Medicina Castelguelfo - Castel San Pietro Terme,3,FFFFFF,000000
+117,TPERBO,116,Linea 116 AGI: Medicina - Castel San Pietro Terme,3,FFFFFF,000000
+121,TPERBO,121,San Lazzaro di Savena - Mirandola,3,FFFFFF,000000
+122,TPERBO,122,San Lazzaro di Savena - Villanova - Castenaso,3,FFFFFF,000000
+123,TPERBO,123,Mazzini Firenze - Ponticella,3,FFFFFF,000000
+124,TPERBO,124,Ponticella - Ospedale Bellaria - San Lazzaro di Savena,3,FFFFFF,000000
+125,TPERBO,125,Villaggio Martino - Ospedale Bellaria - San Lazzaro di Savena,3,FFFFFF,000000
+126,TPERBO,126,San Lazzaro di Savena - Lago dei Castori - Pianoro,3,FFFFFF,000000
+13,TPERBO,13,Piazza Malpighi/Piazza Cavour - Pavese/Rastignano - (Carteria),3,FFFFFF,000000
+131,TPERBO,131,Ozzano Emilia - Facoltà Veterinaria,3,FFFFFF,000000
+132,TPERBO,132,Ponte Rizzoli - Ozzano Stazione - Zona Industriali - Ozzano Galvani,3,FFFFFF,000000
+14,TPERBO,14,Piazza Giovanni XXIII - Barca - Sant'Orsola - Due Madonne/Pilastro,3,FFFFFF,000000
+140,TPERBO,140,Imola Autostazione - Montecatone - Montebello,3,FFFFFF,000000
+141,TPERBO,141,Imola Autostazione - Castel del Rio,3,FFFFFF,000000
+142,TPERBO,142,Imola Autostazione - Piancaldoli,3,FFFFFF,000000
+143,TPERBO,143,Piancaldoli - Castel del Rio,3,FFFFFF,000000
+144,TPERBO,144,Imola Autostazione - Casalfiumanese,3,FFFFFF,000000
+145,TPERBO,145,Castel del Rio - Firenzuola,3,FFFFFF,000000
+147,TPERBO,147,Dozza Imolese - Toscanella di Dozza Imolese,3,FFFFFF,000000
+15,TPERBO,15,Piazza XX Settembre - Mazzini - San Lazzaro Pertini,3,FFFFFF,000000
+150,TPERBO,150,Imola Autostazione - San Prospero,3,FFFFFF,000000
+151,TPERBO,151,Imola Autostazione - Mordano - Bagnara - Massalombarda - Lugo,3,FFFFFF,000000
+152,TPERBO,152,Imola Autostazione - Fruges - Massalombarda - Lugo,3,FFFFFF,000000
+153,TPERBO,153,Imola Autostazione - Sesto Imolese - Conselice,3,FFFFFF,000000
+154,TPERBO,154,Imola Autostazione - Massalombarda - Conselice - Campotto,3,FFFFFF,000000
+156,TPERBO,156,Imola Autostazione - Castel Guelfo di Bologna,3,FFFFFF,000000
+157,TPERBO,157,Linea AGI: Imola - Castel Guelfo - Medicina,3,FFFFFF,000000
+16,TPERBO,16,Piazza Cavour - Molinelli - Piazzale Atleti Azzurri,3,FFFFFF,000000
+160,TPERBO,160,Imola Autostazione - Via Andrea Costa - Zello,3,FFFFFF,000000
+161,TPERBO,161,Imola Carducci / Imola Autostazione - Istituto Agrario Scarabelli,3,FFFFFF,000000
+162,TPERBO,162,Imola Autostazione - Imola San Benedetto,3,FFFFFF,000000
+163,TPERBO,163,Imola Autostazione - Zona Scolastica,3,FFFFFF,000000
+164,TPERBO,164,Imola Pedagna - Zona Scolastica,3,FFFFFF,000000
+165,TPERBO,165,(Bubano) - Imola Pasquala - Zona Scolastica,3,FFFFFF,000000
+179,TPERBO,179,IIS Belluzzi Fioravanti - Battindarno - Borgo Panigale - Normandia,3,FFFFFF,000000
+18,TPERBO,18,Piazza San Francesco - Zanardi - Noce - (Trebbo di Reno),3,FFFFFF,000000
+180,TPERBO,180,Istituto Manfredi Tanari - San Donato - Piazza dell'Unità - Istituto Aldini Valeriani,3,FFFFFF,000000
+181,TPERBO,181,Istituto Aldini / Istituto Serpieri - Stazione Centrale / Autostazione,3,FFFFFF,000000
+182,TPERBO,182,Istituto Manfredi Tanari - Massarenti - San Donato - Piazza dell'Unita,3,FFFFFF,000000
+183,TPERBO,183,Istituto Luxemburg - Santa Viola - Rotonda Malaguti,3,FFFFFF,000000
+184,TPERBO,184,Istituto Luxemburg - Terracini - Carracci - Autostazione,3,FFFFFF,000000
+185,TPERBO,185,Istituto Luxemburg - Terracini - Carracci - Piazza dei Martiri,3,FFFFFF,000000
+186,TPERBO,186,Istituto Arcangeli - Palagi - Zanolini - Autostazione,3,FFFFFF,000000
+187,TPERBO,187,Istituto Arcangeli - Palagi - Zanolini - Stazione Centrale,3,FFFFFF,000000
+189,TPERBO,189,Aldo Moro - Fiera - Dozza - Case Nuove,3,FFFFFF,000000
+19,TPERBO,19,Casteldebole - San Lazzaro Pertini / San Lazzaro Stazione Caselle / (S. Camillo) / (Ozzano),3,FFFFFF,000000
+2,TPERBO,2,Circolare Destra_Stazione - Pedagna - Ospedale - Zolino - Stazione - Campanella - Rivazza - Piscina - Saffi CUP - Stazione,3,FFFFFF,000000
+20,TPERBO,20,(San Biagio) / Casalecchio Stazione Garibaldi / Casalecchio - San Donato - Pilastro,3,FFFFFF,000000
+200,TPERBO,200,Linea AGI: Medicina-Bologna,3,FFFFFF,000000
+205,TPERBO,205,Linea AGI: Bologna - Castel Guelfo,3,FFFFFF,000000
+206,TPERBO,206,Bologna - Sesto Imolese - Massa Lombarda - Lugo,3,FFFFFF,000000
+207,TPERBO,206,Linea 206 AGI: Bologna - Sesto Imolese - Massa Lombarda - Lugo,3,FFFFFF,000000
+21,TPERBO,21,Filanda - Stazione Centrale - San Donato - (San Sisto) - (Cadriano),3,FFFFFF,000000
+211,TPERBO,211,Linea AGI: Bologna - Budrio - Medicina,3,FFFFFF,000000
+213,TPERBO,213,Linea AGI: Bologna - Budrio - Medicina (via San Donato),3,FFFFFF,000000
+214,TPERBO,214,Budrio Stazione - San Lazzaro Municipio,3,FFFFFF,000000
+22,TPERBO,22,Circolare_Borgo Panigale - Casteldebole,3,FFFFFF,000000
+23,TPERBO,23,Riva di Reno - Ospedale Maggiore - Borgo Panigale/(Lavino di Mezzo),3,FFFFFF,000000
+231,TPERBO,231,Mondonuovo - Granarolo dell'Emilia - Budrio,3,FFFFFF,000000
+237,TPERBO,237,Bologna - Alberino,3,FFFFFF,000000
+242,TPERBO,242,Linea AGI: Notturno Sabato  Medicina - Castenaso - Bologna,3,FFFFFF,000000
+243,TPERBO,243,Linea AGI: Bologna - Budrio - Molinella - Marmorta,3,FFFFFF,000000
+244,TPERBO,244,Linea AGI: Budrio - Mezzolara - Molinella,3,FFFFFF,000000
+247,TPERBO,247,Imola - Alberino,3,FFFFFF,000000
+248,TPERBO,248,Linea AGI: Medicina - Castel San Pietro Terme,3,FFFFFF,000000
+25,TPERBO,25,Carcere/Dozza - Stazione Centrale - Ospedale Malpighi - Fossolo - Due Madonne,3,FFFFFF,000000
+256,TPERBO,256,Medicina - Conselice - Longastrino,3,FFFFFF,000000
+257,TPERBO,257,Bologna - Argenta,3,FFFFFF,000000
+27,TPERBO,27,Byron/Corticella Stazione - Mazzini - Piazzale Atleti Azzurri/Genova,3,FFFFFF,000000
+273,TPERBO,273,Linea AGI: Bologna - Budrio - Ospitale Monacale,3,FFFFFF,000000
+28,TPERBO,28,Piazza dei Martiri - Irnerio - San Donato - Fiera,3,FFFFFF,000000
+29,TPERBO,29,Parcheggio Tanari - Piazza Malpighi - San Mamolo - Roncrio,3,FFFFFF,000000
+296,TPERBO,296,Conselice - Lugo - Bagnacavallo - Ravenna,3,FFFFFF,000000
+299,TPERBO,99,Linea 99 AGI: Bologna - Medicina - Lugo,3,FFFFFF,000000
+30,TPERBO,30,Sostegno - Stazione Centrale - Istituto Rizzoli - San Michele in Bosco,3,FFFFFF,000000
+300,TPERBO,300,DIRETTA Mondonuovo - Bologna,3,FFFFFF,000000
+32,TPERBO,32,Circolare esterna destra,3,FFFFFF,000000
+33,TPERBO,33,Circolare esterna sinistra,3,FFFFFF,000000
+34,TPERBO,34,Ospedale Maggiore - Bertalia - Pescarola - Navile - Piazza dell'Unita,3,FFFFFF,000000
+35,TPERBO,35,Facolta di Ingegneria - Ospedale Maggiore - Stazione Centrale - Fiera - Facolta di Agraria,3,FFFFFF,000000
+353,TPERBO,353,Menarini - Altedo,3,FFFFFF,000000
+354,TPERBO,354,Bologna - Altedo - Gallo,3,FFFFFF,000000
+355,TPERBO,355,Altedo - Boschi,3,FFFFFF,000000
+356,TPERBO,356,Bologna - Altedo - Malalbergo - Ferrara,3,FFFFFF,000000
+357,TPERBO,357,Bologna - Altedo - Passo Segni,3,FFFFFF,000000
+358,TPERBO,358,Altedo - Molinella,3,FFFFFF,000000
+36,TPERBO,36,Centro Sportivo Barca - Stazione Centrale - Ospedale Sant'Orsola - Ospedale Bellaria - (San Camillo),3,FFFFFF,000000
+37,TPERBO,37,Rotonda C.N.R. / Stazione Centrale - Cirenaica - Fossolo - Bombicci,3,FFFFFF,000000
+38,TPERBO,38,Circolare periferica destra,3,FFFFFF,000000
+39,TPERBO,39,Circolare periferica sinistra,3,FFFFFF,000000
+4,TPERBO,4,Pedagna - Ospedale Nuovo - Stazione F.S. - Selice - Zona Industriale - Primo Maggio,3,FFFFFF,000000
+41,TPERBO,A,Navetta A: Fioravanti Piazza Liber Paradisus - Piazza Cavour - Poliambulatorio Rizzoli,3,FFFFFF,000000
+411,TPERBO,411,Agelato - Trebbo di Reno,3,FFFFFF,000000
+413,TPERBO,413,Castel Maggiore - Z.I. Saliceto,3,FFFFFF,000000
+42,TPERBO,T2,Navetta T2: Circolare_Piazza Minghetti - Stazione Centrale - Parcheggio Tanari,3,FFFFFF,000000
+431,TPERBO,431,Ospedale Bentivoglio - Minerbio - Baricella - Boschi,3,FFFFFF,000000
+432,TPERBO,432,Malalbergo - Altedo - Ospedale Bentivoglio,3,FFFFFF,000000
+433,TPERBO,433,Ospedale Bentivoglio - San Pietro in Casale - Galliera,3,FFFFFF,000000
+434,TPERBO,434,Malalbergo - Altedo - San Pietro in Casale,3,FFFFFF,000000
+435,TPERBO,435,Ospedale Bentivoglio - San Giorgio di Piano - Castello d'Argile - Pieve di Cento,3,FFFFFF,000000
+436,TPERBO,436,Ospedale Bentivoglio - Funo - Castel Maggiore,3,FFFFFF,000000
+437,TPERBO,437,Granarolo dell'Emilia - Ospedale di Bentivoglio,3,FFFFFF,000000
+441,TPERBO,441,Bologna Autostazione - Altedo,3,FFFFFF,000000
+442,TPERBO,442,San Marino di Bentivoglio - Castel Maggiore,3,FFFFFF,000000
+443,TPERBO,443,Funo - Z.I. Cà  de Fabbri,3,FFFFFF,000000
+444,TPERBO,444,Castel Maggiore - Granarolo dell'Emilia,3,FFFFFF,000000
+445,TPERBO,445,(Bologna) - Funo - Centergross - Interporto - Bentivoglio - (Saletto),3,FFFFFF,000000
+446,TPERBO,446,Bologna - Bentivoglio - Saletto,3,FFFFFF,000000
+447,TPERBO,447,Bologna - Z.I. Saliceto - Bentivoglio - Saletto,3,FFFFFF,000000
+448,TPERBO,448,Bologna - Centergross - Interporto,3,FFFFFF,000000
+450,TPERBO,450,DIRETTA Cento - Bologna,3,FFFFFF,000000
+453,TPERBO,453,San Giorgio di Piano - Venezzano - Cento,3,FFFFFF,000000
+455,TPERBO,455,Cento - San Pietro in Casale,3,FFFFFF,000000
+456,TPERBO,456,Cento - Poggetto - San Pietro in Casale,3,FFFFFF,000000
+50,TPERBO,C,Navetta C: Circolare_Cestello - Stazione Centrale - Parcheggio Tanari,3,FFFFFF,000000
+503,TPERBO,503,Calderara Municipio - Osteria Nuova Stazione,3,FFFFFF,000000
+504,TPERBO,504,Sala Bolognese - Bologna,3,FFFFFF,000000
+505,TPERBO,505,Bargellino Stazione - Calderara di Reno - Longara - Bonconvento,3,FFFFFF,000000
+506,TPERBO,506,Bonconvento - San Giovanni in Persiceto,3,FFFFFF,000000
+507,TPERBO,507,Osteria Nuova Stazione - Padulle - San Giovanni in Persiceto,3,FFFFFF,000000
+51,TPERBO,51,Parcheggio Lercaro/(Piazza Cavour) - (Buon Pastore) - Monte Donato,3,FFFFFF,000000
+52,TPERBO,52,Piazza Cavour - Osservanza - Gaibola - Sabbiuno,3,FFFFFF,000000
+53,TPERBO,Q,Linea Q: Aeroporto - Ospedale Maggiore - (Stazione Centrale),3,FFFFFF,000000
+531,TPERBO,531,San Giovanni in Persiceto - Castelfranco Emilia,3,FFFFFF,000000
+533,TPERBO,533,Anzola dell'Emilia - Le Budrie - San Giovanni in Persiceto,3,FFFFFF,000000
+536,TPERBO,536,Caselle - Palata - Decima - Ospedale San Giovanni in Persiceto,3,FFFFFF,000000
+537,TPERBO,537,Bevilacqua - Palata - Crevalcore - Ospedale San Giovanni in Persiceto,3,FFFFFF,000000
+538,TPERBO,538,San Giovanni in Persiceto - Sant'Agata Bolognese - Nonantola,3,FFFFFF,000000
+54,TPERBO,54,Villaggio Speranza - Borgo Panigale - Aeroporto,3,FFFFFF,000000
+55,TPERBO,55,Facolta di Agraria - Pilastro - Due Madonne - Foscherara - San Ruffillo Stazione,3,FFFFFF,000000
+550,TPERBO,550,Ferrara - Mirabello - Renazzo - Cento,3,FFFFFF,000000
+551,TPERBO,551,Ferrara - Cento - San Giovanni in Persiceto - Modena,3,FFFFFF,000000
+552,TPERBO,552,Ferrara - Cento - Crevalcore - Modena,3,FFFFFF,000000
+554,TPERBO,554,Crevalcore - Cento,3,FFFFFF,000000
+556,TPERBO,556,Cento - San Giovanni in Persiceto - Bologna,3,FFFFFF,000000
+56,TPERBO,56,Via Larga - Z.I. Roveri_Rotonda Negroni,3,FFFFFF,000000
+57,TPERBO,D,Navetta D: Piazza XX Settembre - Porta Saragozza - Ravone,3,FFFFFF,000000
+576,TPERBO,576,Bologna - San Giovanni in Persiceto - Crevalcore,3,FFFFFF,000000
+58,TPERBO,58,Villa Spada - Basilica di San Luca,3,FFFFFF,000000
+59,TPERBO,59,Piazza Cavour - Villa Guastavillani,3,FFFFFF,000000
+60,TPERBO,60,Circolare_San Donato - Cirenaica - Ospedale Sant'Orsola - San Donato - (Terrapieno),3,FFFFFF,000000
+61,TPERBO,61,Notturno Feriale Circolare_Battindarno - Stazione Centrale - Ospedale Sant'Orsola,3,FFFFFF,000000
+62,TPERBO,62,Notturno Feriale Circolare_Corticella - Stazione Centrale - Due Madonne,3,FFFFFF,000000
+646,TPERBO,646,Bologna - Anzola dell'Emilia - Spilamberto - Bazzano Stazione F.B.V.,3,FFFFFF,000000
+651,TPERBO,651,Bologna Autostazione - Bazzano Stazione,3,FFFFFF,000000
+654,TPERBO,654,Vignola - Savigno,3,FFFFFF,000000
+656,TPERBO,656,Bazzano Stazione F.B.V. - Zocca,3,FFFFFF,000000
+657,TPERBO,657,Bazzano Stazione F.B.V. - Savigno,3,FFFFFF,000000
+658,TPERBO,658,Bazzano Stazione F.B.V. - Tole,3,FFFFFF,000000
+671,TPERBO,671,Bologna - Bazzano Stazione F.B.V. - Vignola,3,FFFFFF,000000
+672,TPERBO,672,Bologna - Casalecchio di Reno - Bazzano Stazione F.B.V. - Vignola,3,FFFFFF,000000
+673,TPERBO,673,Zola Predosa - Rigosa,3,FFFFFF,000000
+676,TPERBO,676,Bologna Porta Sant' Isaia - Casalecchio di Reno - via Lunga Stazione - Philip Morris,3,FFFFFF,000000
+677,TPERBO,677,Bologna Stazione Centrale - Anzola Stazione - Philip Morris,3,FFFFFF,000000
+68,TPERBO,68,Stazione Centrale - Stalingrado - Camping Citta di Bologna,3,FFFFFF,000000
+684,TPERBO,684,Bologna - Savigno,3,FFFFFF,000000
+686,TPERBO,686,Bologna - Riale Stazione F.B.V. - Tole,3,FFFFFF,000000
+687,TPERBO,687,Sasso Marconi - Mongardino - Ponte Rivabella,3,FFFFFF,000000
+688,TPERBO,688,Ponte Rivabella - Padernella,3,FFFFFF,000000
+689,TPERBO,689,Ponte Rivabella - Loghetti,3,FFFFFF,000000
+706,TPERBO,706,Bologna - Vergato,3,FFFFFF,000000
+716,TPERBO,716,Marzabotto Stazione - Tole,3,FFFFFF,000000
+726,TPERBO,726,Vergato - Labante - Montese,3,FFFFFF,000000
+727,TPERBO,727,Vergato - Cereglio - Montese,3,FFFFFF,000000
+728,TPERBO,728,Vergato - Tole,3,FFFFFF,000000
+737,TPERBO,737,Vergato - Marano - Montese,3,FFFFFF,000000
+746,TPERBO,746,Porretta Terme - Riola - Vergato,3,FFFFFF,000000
+747,TPERBO,747,Porretta Terme - Marano - Montese,3,FFFFFF,000000
+756,TPERBO,756,Porretta Terme - Abetaia - Montese,3,FFFFFF,000000
+757,TPERBO,757,Porretta Terme - Querciola - Montese,3,FFFFFF,000000
+766,TPERBO,766,Porretta Terme - Ponte della Venturina,3,FFFFFF,000000
+767,TPERBO,767,Porretta Terme - Case Calistri,3,FFFFFF,000000
+768,TPERBO,768,Porretta Terme - Casa Forlai,3,FFFFFF,000000
+77,TPERBO,77,Navetta Stadio Marescalchi - Montefiorino,3,FFFFFF,000000
+770,TPERBO,770,Porretta Terme (Via Repubblica) - Porretta Terme terminal,3,FFFFFF,000000
+776,TPERBO,776,Porretta Terme - Vidiciatico - Corno alle Scale,3,FFFFFF,000000
+787,TPERBO,787,Porretta Terme - Pennola,3,FFFFFF,000000
+79,TPERBO,79,Barca - Borgo Panigale - Z.I. Zola Predosa - Z.I. Casalecchio,3,FFFFFF,000000
+796,TPERBO,796,Porretta Terme - Baigno / Zanchetto Bivio,3,FFFFFF,000000
+797,TPERBO,797,Porretta Terme - Badi - Suviana,3,FFFFFF,000000
+798,TPERBO,798,Porretta Terme - Casola - Caste di Casio,3,FFFFFF,000000
+80,TPERBO,80,Circolare_Borgo Panigale - Casteldebole - Ceretolo - Z.I. Zola Predosa - Normandia,3,FFFFFF,000000
+806,TPERBO,806,Vergato - Suviana - Badi,3,FFFFFF,000000
+808,TPERBO,808,Vergato - Riola Stazione - Castiglione dei Pepoli,3,FFFFFF,000000
+81,TPERBO,81,Bologna Stazione Centrale - Lippo - Longara - Padulle - Bagno di Piano,3,FFFFFF,000000
+826,TPERBO,826,Bologna - Castiglione dei Pepoli - San Giacomo,3,FFFFFF,000000
+827,TPERBO,827,Sasso Marconi Stazione F.S. - Vado - Mozuno,3,FFFFFF,000000
+828,TPERBO,828,San Benedetto Val di Sambro Stazione - Castiglione dei Pepoli,3,FFFFFF,000000
+829,TPERBO,829,Vergato - Stanco,3,FFFFFF,000000
+83,TPERBO,83,Bologna - Ospedale Maggiore - Casalecchio di Reno - Riale - Calderino,3,FFFFFF,000000
+846,TPERBO,846,Ponte Locatello - Grizzana Morandi - Vergato,3,FFFFFF,000000
+85,TPERBO,85,Casalecchio De Curtis Palasport - Z.I. Lavoro - Meridiana - Casalecchio Marconi - Casalecchio AUSL,3,FFFFFF,000000
+850,TPERBO,850,DIRETTA Castel dell'Alpi - Bologna,3,FFFFFF,000000
+851,TPERBO,851,DIRETTA Rioveggio - Casalecchio di Reno,3,FFFFFF,000000
+856,TPERBO,856,Bologna - San Benedetto Val di Sambro - Castel Dell'Alpi / Pian del Voglio,3,FFFFFF,000000
+857,TPERBO,857,Bivio Cà  di Martino - Monghidoro - Loiano; Bivio Cà  di Martino - Castiglione dei Pepoli,3,FFFFFF,000000
+858,TPERBO,858,Castiglione dei Pepoli - San Benedetto Val di Sambro,3,FFFFFF,000000
+86,TPERBO,86,Piazza San Francesco - Ospedale Maggiore - Casalecchio Marullina,3,FFFFFF,000000
+87,TPERBO,87,Bologna C.N.R. - Stazione Centrale - Ospedale Maggiore - Anzola dell'Emilia - Castelfranco Emilia,3,FFFFFF,000000
+88,TPERBO,88,Bologna Stazione Centrale - Cadriano - Viadagola - Granarolo dell'Emilia,3,FFFFFF,000000
+89,TPERBO,89,San Biagio - Casalecchio - Marconi - Villanova - Centronova/(Ca' dell'Orbo),3,FFFFFF,000000
+9,TPERBO,9,Circolare Festiva_Stazione F.S. - Zolino - Ospedale - Pedagna Ovest - Saffi CUP - Campanella - Stazione F.S.,3,FFFFFF,000000
+90,TPERBO,90,Bologna Piazza Cavour - Ospedale Bellaria - San Lazzaro di Savena - San Camillo/Ozzano dell'Emilia (Facolta di Veterinaria),3,FFFFFF,000000
+900,TPERBO,900,DIRETTA Monghidoro - Bologna,3,FFFFFF,000000
+903,TPERBO,903,Pianoro Vecchio - Istituto Majorana di San Lazzaro di Savena,3,FFFFFF,000000
+904,TPERBO,904,Pianoro Vecchio - Liceo Fermi di Bologna,3,FFFFFF,000000
+905,TPERBO,905,Pianoro Vecchio - Istituto Manfredi Tanari di Bologna,3,FFFFFF,000000
+906,TPERBO,906,Bologna - Monghidoro - Castel dell'Alpi,3,FFFFFF,000000
+907,TPERBO,907,Monghidoro - Loiano bivio Monzuno,3,FFFFFF,000000
+91,TPERBO,91,Bologna Stazione Centrale - Lippo - Calderara di Reno - Osteria Nuova - Sala Bolognese - Padulle,3,FFFFFF,000000
+911,TPERBO,N5,Notturna N5: Noce - Bertalia - Stazione Centrale - Orti - Foscherara,3,FFFFFF,000000
+913,TPERBO,N6,Notturna N6: Piazza Cavour - Murri - Toscana Pavese - Rastignano,3,FFFFFF,000000
+914,TPERBO,N4,Notturna N4: Filanda - Barca - Stazione Centrale - Massarenti - Roveri - Due Madonne - Fossolo,3,FFFFFF,000000
+916,TPERBO,916,Bologna - Monghidoro,3,FFFFFF,000000
+918,TPERBO,918,Bologna - Loiano,3,FFFFFF,000000
+92,TPERBO,92,Sibano - Sasso Marconi - Casalecchio di Reno - Ospedale Maggiore - Bologna - Trebbo di Reno,3,FFFFFF,000000
+920,TPERBO,N3,Notturna N3: Ponte Ronca - Casalecchio - Stazione Centrale - San Donato - San Sisto,3,FFFFFF,000000
+923,TPERBO,N7,Notturna N7: Stazione Centrale - Santa Viola - Casteldebole - Normandia,3,FFFFFF,000000
+925,TPERBO,N2,Notturna N2: Stazione Centrale - Piazza dell'Unita - Dozza,3,FFFFFF,000000
+927,TPERBO,N1,Notturna N1: Funo - Castel Maggiore - Corticella - Stazione Centrale - Mazzini - San Lazzaro,3,FFFFFF,000000
+93,TPERBO,93,Bologna Piazza dei Martiri - Granarolo dell'Emilia - Baricella - Mondonuovo,3,FFFFFF,000000
+931,TPERBO,FBP,Sostitutivo Bologna - Roveri,3,FFFFFF,000000
+94,TPERBO,94,Bazzano - Casalecchio di Reno - Bologna - Ospedale Sant'Orsola - San Lazzaro di Savena - Castel San Pietro Terme,3,FFFFFF,000000
+948,TPERBO,N8,Notturna N8: Circolare_Piazza Aldrovandi - Ospedale Malpighi - Sant'Orsola - Sant'Egidio,3,FFFFFF,000000
+951,TPERBO,FBP,Sostitutivo Bologna - Portomaggiore,3,FFFFFF,000000
+96,TPERBO,96,Bologna Piazza Cavour - Rastignano - Carteria di Sesto - Pianoro,3,FFFFFF,000000
+97,TPERBO,97,Bologna Piazza dei Martiri - Castel Maggiore - San Giorgio di Piano - Cento / San Pietro in Casale - San Venanzio di Galliera,3,FFFFFF,000000
+98,TPERBO,98,Bologna Piazza dei Martiri - Castel Maggiore,3,FFFFFF,000000
+99,TPERBO,99,Bologna - Castenaso - Budrio - Medicina - Castel Guelfo / Lugo,3,FFFFFF,000000
