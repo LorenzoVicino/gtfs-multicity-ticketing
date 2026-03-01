@@ -94,8 +94,25 @@ function safeCode(raw: string): string {
 
 async function findFeedFile(dir: string, targetLower: string): Promise<string | null> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
-  const file = entries.find((entry) => entry.isFile() && entry.name.toLowerCase() === targetLower);
-  return file ? path.join(dir, file.name) : null;
+
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.toLowerCase() === targetLower) {
+      return path.join(dir, entry.name);
+    }
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const nested = await findFeedFile(path.join(dir, entry.name), targetLower);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
 }
 
 async function writeCsvFile(filePath: string, columns: string[], rows: Record<string, string>[]): Promise<void> {
@@ -228,15 +245,18 @@ export async function importGtfsZip(params: ImportParams): Promise<void> {
 
   const template = await fs.readFile(path.join(process.cwd(), "db", "import_gtfs.sql"), "utf8");
   const sql = template
-    .replaceAll(":'agency_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["agency.txt"])))}`)
-    .replaceAll(":'routes_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["routes.txt"])))}`)
-    .replaceAll(":'stops_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["stops.txt"])))}`)
-    .replaceAll(":'calendar_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["calendar.txt"])))}`)
-    .replaceAll(":'trips_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["trips.txt"])))}`)
-    .replaceAll(":'stop_times_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["stop_times.txt"])))}`)
+    .replaceAll(":'agency_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["agency.txt"])))}'`)
+    .replaceAll(":'routes_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["routes.txt"])))}'`)
+    .replaceAll(":'stops_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["stops.txt"])))}'`)
+    .replaceAll(":'calendar_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["calendar.txt"])))}'`)
+    .replaceAll(":'trips_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["trips.txt"])))}'`)
+    .replaceAll(
+      ":'stop_times_file'",
+      `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["stop_times.txt"])))}'`
+    )
     .replaceAll(
       ":'fare_attributes_file'",
-      `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["fare_attributes.txt"])))}`
+      `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["fare_attributes.txt"])))}'`
     )
     .replaceAll(":'city_code'", `'${cityCode}'`)
     .replaceAll(":'city_name'", `'${params.cityName.replaceAll("'", "''")}'`)

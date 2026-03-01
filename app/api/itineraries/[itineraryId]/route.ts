@@ -69,7 +69,7 @@ export async function GET(_: Request, { params }: Params) {
       itineraryId: itinerary.itinerary_id,
       cityId: itinerary.city_id,
       createdAt: itinerary.created_at,
-      segments: segmentsResult.rows.map((segment) => ({
+      segments: segmentsResult.rows.map((segment: SegmentRow) => ({
         segmentId: segment.segment_id,
         segmentSeq: segment.segment_seq,
         tripId: segment.trip_id,

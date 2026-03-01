@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { verifySignedTicketQr } from "@/lib/ticketing";
 
 type Params = {
   params: Promise<{
@@ -10,10 +11,19 @@ type Params = {
 type TicketRow = {
   ticket_id: number;
   ticket_code: string;
+  city_id: number;
+  booking_code: string;
   status: "ISSUED" | "REVOKED";
+  agency_id: number;
+  agency_name: string;
+  gtfs_agency_id: string;
+  ticket_type_id: number;
+  ticket_type_name: string;
+  price_cents: number;
   first_validated_at: string | null;
   valid_until: string | null;
   duration_minutes: number;
+  qr_payload: string | null;
   is_valid: boolean;
 };
 
@@ -22,6 +32,7 @@ type ValidationRow = {
   stop_id: number | null;
   segment_id: number | null;
   validator_device: string | null;
+  result: string;
 };
 
 export async function GET(_: Request, { params }: Params) {
@@ -42,16 +53,29 @@ export async function GET(_: Request, { params }: Params) {
       SELECT
         t.ticket_id,
         t.ticket_code,
+        t.city_id,
+        b.booking_code,
         t.status,
+        tt.agency_id,
+        a.name AS agency_name,
+        a.gtfs_agency_id,
+        tt.ticket_type_id,
+        tt.name AS ticket_type_name,
+        tt.price_cents,
         t.first_validated_at::text,
         t.valid_until::text,
         tt.duration_minutes,
+        t.qr_payload,
         (
           t.valid_until IS NOT NULL
           AND NOW() <= t.valid_until
         ) AS is_valid
       FROM ticket t
+      JOIN booking b ON b.booking_id = t.booking_id
       JOIN ticket_type tt ON tt.ticket_type_id = t.ticket_type_id
+      JOIN agency a
+        ON a.agency_id = tt.agency_id
+       AND a.city_id = tt.city_id
       WHERE t.ticket_code = $1
       LIMIT 1
       `,
@@ -70,7 +94,8 @@ export async function GET(_: Request, { params }: Params) {
         validated_at::text,
         stop_id,
         segment_id,
-        validator_device
+        validator_device,
+        result
       FROM validation
       WHERE ticket_id = $1
       ORDER BY validated_at DESC
@@ -79,18 +104,48 @@ export async function GET(_: Request, { params }: Params) {
       [ticket.ticket_id]
     );
 
+    let qrSignatureValid = false;
+    if (ticket.qr_payload) {
+      try {
+        const claims = verifySignedTicketQr(ticket.qr_payload);
+        qrSignatureValid =
+          claims.ticketCode === ticket.ticket_code &&
+          claims.bookingCode === ticket.booking_code &&
+          claims.cityId === ticket.city_id &&
+          claims.agencyId === ticket.agency_id &&
+          claims.ticketTypeId === ticket.ticket_type_id;
+      } catch {
+        qrSignatureValid = false;
+      }
+    }
+
     return NextResponse.json({
       ticketCode: ticket.ticket_code,
+      cityId: ticket.city_id,
+      bookingCode: ticket.booking_code,
       status: ticket.status,
       firstValidatedAt: ticket.first_validated_at,
       validUntil: ticket.valid_until,
       isValid: ticket.is_valid,
       durationMinutes: ticket.duration_minutes,
-      lastValidations: validationsResult.rows.map((row) => ({
+      qrToken: ticket.qr_payload,
+      qrSignatureValid,
+      agency: {
+        agencyId: ticket.agency_id,
+        gtfsAgencyId: ticket.gtfs_agency_id,
+        name: ticket.agency_name
+      },
+      ticketType: {
+        ticketTypeId: ticket.ticket_type_id,
+        name: ticket.ticket_type_name,
+        priceCents: ticket.price_cents
+      },
+      lastValidations: validationsResult.rows.map((row: ValidationRow) => ({
         validatedAt: row.validated_at,
         stopId: row.stop_id,
         segmentId: row.segment_id,
-        validatorDevice: row.validator_device
+        validatorDevice: row.validator_device,
+        result: row.result
       }))
     });
   } catch (error) {

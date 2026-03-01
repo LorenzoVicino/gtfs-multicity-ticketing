@@ -2,17 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { asTicketingError, validateTicketWithClient } from "@/lib/ticketing";
 
-type Params = {
-  params: Promise<{
-    ticketCode: string;
-  }>;
-};
-
 type ValidationBody = {
+  ticketCode?: string;
+  qrToken?: string;
   stopId?: number;
   segmentId?: number;
   validatorDevice?: string;
-  qrToken?: string;
 };
 
 class HttpError extends Error {
@@ -38,7 +33,7 @@ function asPositiveInt(value: unknown, field: string): number | null {
 
 function parseBody(raw: string): ValidationBody {
   if (!raw.trim()) {
-    return {};
+    throw new HttpError(400, "Body JSON non valido");
   }
 
   let parsed: unknown;
@@ -54,31 +49,35 @@ function parseBody(raw: string): ValidationBody {
 
   const body = parsed as Record<string, unknown>;
 
-  if (body.validatorDevice !== undefined && typeof body.validatorDevice !== "string") {
-    throw new HttpError(400, "validatorDevice deve essere una stringa");
+  if (body.ticketCode !== undefined && typeof body.ticketCode !== "string") {
+    throw new HttpError(400, "ticketCode deve essere una stringa");
   }
 
   if (body.qrToken !== undefined && typeof body.qrToken !== "string") {
     throw new HttpError(400, "qrToken deve essere una stringa");
   }
 
-  return {
+  if (body.validatorDevice !== undefined && typeof body.validatorDevice !== "string") {
+    throw new HttpError(400, "validatorDevice deve essere una stringa");
+  }
+
+  const result = {
+    ticketCode: typeof body.ticketCode === "string" ? body.ticketCode.trim() : undefined,
+    qrToken: typeof body.qrToken === "string" ? body.qrToken.trim() : undefined,
     stopId: asPositiveInt(body.stopId, "stopId") ?? undefined,
     segmentId: asPositiveInt(body.segmentId, "segmentId") ?? undefined,
     validatorDevice:
-      typeof body.validatorDevice === "string" ? body.validatorDevice.trim().slice(0, 64) : undefined,
-    qrToken: typeof body.qrToken === "string" ? body.qrToken.trim() : undefined
+      typeof body.validatorDevice === "string" ? body.validatorDevice.trim().slice(0, 64) : undefined
   };
-}
 
-export async function POST(request: Request, { params }: Params) {
-  const { ticketCode: rawTicketCode } = await params;
-  const ticketCode = rawTicketCode.trim();
-
-  if (!ticketCode) {
-    return NextResponse.json({ error: "ticketCode mancante" }, { status: 400 });
+  if (!result.ticketCode && !result.qrToken) {
+    throw new HttpError(400, "ticketCode o qrToken obbligatorio");
   }
 
+  return result;
+}
+
+export async function POST(request: Request) {
   let body: ValidationBody;
   try {
     body = parseBody(await request.text());
@@ -98,13 +97,7 @@ export async function POST(request: Request, { params }: Params) {
     txStarted = true;
     await client.query("SET search_path TO transport, public");
 
-    const result = await validateTicketWithClient(client, {
-      ticketCode,
-      qrToken: body.qrToken,
-      stopId: body.stopId,
-      segmentId: body.segmentId,
-      validatorDevice: body.validatorDevice
-    });
+    const result = await validateTicketWithClient(client, body);
 
     await client.query("COMMIT");
     txStarted = false;

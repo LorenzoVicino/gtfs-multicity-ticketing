@@ -112,7 +112,7 @@ export async function GET(request: Request) {
       stopId,
       stopName: stopResult.rows[0].stop_name,
       serviceDate,
-      departures: departuresResult.rows.map((row) => ({
+      departures: departuresResult.rows.map((row: DepartureRow) => ({
         departureTs: row.departure_ts,
         lineName: row.line_name,
         routeId: row.route_id,
