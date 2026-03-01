@@ -1,2 +1,0 @@
-agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone,agency_fare_url,agency_email
-Amtab  S.p.A,Amtab  S.p.A,http://www.amtab.it,Europe/Rome,it,0805393111,http://,segreteria@amtab.it

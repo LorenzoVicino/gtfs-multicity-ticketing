@@ -339,7 +339,7 @@ CREATE INDEX IF NOT EXISTS idx_itinerary_segment_itinerary_seq_req ON itinerary_
 
 -- 11) Dato minimo di esempio richiesto: 1 ticket_type per una city esistente.
 INSERT INTO ticket_type (city_id, name, duration_minutes, price_cents, active)
-SELECT c.city_id, 'Urban 90', 90, 150, TRUE
+SELECT c.city_id, 'Biglietto 90 minuti', 90, 150, TRUE
 FROM city c
 ORDER BY c.city_id
 LIMIT 1
@@ -352,4 +352,3 @@ FROM ticket_type tt
 WHERE t.ticket_type_id IS NULL
   AND tt.city_id = t.city_id
   AND tt.active = TRUE;
-

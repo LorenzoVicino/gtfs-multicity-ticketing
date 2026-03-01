@@ -16,7 +16,9 @@ services:
       - ./data/gtfs/incoming/import_BRI.sql:/docker-entrypoint-initdb.d/02_import_BRI.sql:ro
       - ./data/gtfs/incoming/import_BOL.sql:/docker-entrypoint-initdb.d/03_import_BOL.sql:ro
       - ./db/extend_ticketing.sql:/docker-entrypoint-initdb.d/04_extend_ticketing.sql:ro
-      - ./db/indexes.sql:/docker-entrypoint-initdb.d/05_indexes.sql:ro
+      - ./db/agency_ticketing.sql:/docker-entrypoint-initdb.d/05_agency_ticketing.sql:ro
+      - ./db/seed_time_ticket_types.sql:/docker-entrypoint-initdb.d/06_seed_time_ticket_types.sql:ro
+      - ./db/indexes.sql:/docker-entrypoint-initdb.d/07_indexes.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d gtfs_ticketing"]
       interval: 5s
