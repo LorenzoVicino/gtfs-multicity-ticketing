@@ -11,13 +11,31 @@ const args = new Set(process.argv.slice(2));
 const skipInstall = args.has("--skip-install");
 const setupOnly = args.has("--setup-only");
 
+function resolveCommand(command) {
+  if (process.platform === "win32" && command === "npm") {
+    return "npm.cmd";
+  }
+
+  return command;
+}
+
+function resolveSpawnOptions(command, baseOptions = {}) {
+  if (process.platform === "win32" && command === "npm") {
+    return {
+      ...baseOptions,
+      shell: true
+    };
+  }
+
+  return baseOptions;
+}
+
 function run(command, commandArgs, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, commandArgs, {
+    const child = spawn(resolveCommand(command), commandArgs, {
       cwd: repoRoot,
       stdio: "inherit",
-      shell: process.platform === "win32",
-      ...options
+      ...resolveSpawnOptions(command, options)
     });
 
     child.on("error", (error) => {
@@ -37,10 +55,10 @@ function run(command, commandArgs, options = {}) {
 
 function runCapture(command, commandArgs) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, commandArgs, {
+    const child = spawn(resolveCommand(command), commandArgs, {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],
-      shell: process.platform === "win32"
+      ...resolveSpawnOptions(command),
     });
 
     let stdout = "";
@@ -73,6 +91,27 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function describeContainerStatus(status) {
+  switch (status) {
+    case "created":
+      return "container creato, avvio in corso";
+    case "restarting":
+      return "container in riavvio";
+    case "starting":
+      return "database in inizializzazione";
+    case "running":
+      return "container avviato, attendo healthcheck";
+    case "healthy":
+      return "database pronto";
+    case "unhealthy":
+      return "container avviato ma healthcheck fallito";
+    case "exited":
+      return "container terminato";
+    default:
+      return `stato rilevato: ${status || "sconosciuto"}`;
+  }
+}
+
 async function main() {
   const envExample = path.join(repoRoot, ".env.example");
   const envLocal = path.join(repoRoot, ".env.local");
@@ -85,9 +124,13 @@ async function main() {
   console.log("Avvio PostgreSQL con Docker Compose...");
   await run("docker", ["compose", "up", "-d", "postgres"]);
 
-  console.log("Attendo che il database sia pronto...");
+  const maxAttempts = 45;
+  const waitMs = 2000;
+  console.log(
+    `Attendo che il database sia pronto... (max ${Math.round((maxAttempts * waitMs) / 1000)}s)`
+  );
   let dbReady = false;
-  for (let attempt = 0; attempt < 45; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const status = await runCapture("docker", [
         "inspect",
@@ -96,15 +139,22 @@ async function main() {
         "gtfs-postgres"
       ]);
 
-      if (status === "healthy" || status === "running") {
+      const normalizedStatus = status || "unknown";
+      console.log(
+        `  [${attempt + 1}/${maxAttempts}] ${describeContainerStatus(normalizedStatus)} (${normalizedStatus})`
+      );
+
+      if (normalizedStatus === "healthy" || normalizedStatus === "running") {
         dbReady = true;
+        console.log("Database pronto.");
         break;
       }
-    } catch {
-      // Keep polling until the container becomes available.
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.log(`  [${attempt + 1}/${maxAttempts}] container non ancora interrogabile: ${message}`);
     }
 
-    await sleep(2000);
+    await sleep(waitMs);
   }
 
   if (!dbReady) {
@@ -115,6 +165,8 @@ async function main() {
   if (shouldInstall) {
     console.log("Installazione dipendenze npm...");
     await run("npm", ["install"]);
+  } else {
+    console.log("Dipendenze gia` presenti, salto npm install.");
   }
 
   if (setupOnly) {

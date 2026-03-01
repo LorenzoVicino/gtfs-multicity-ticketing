@@ -12,6 +12,7 @@ Questa cartella ora include anche una web app Next.js con:
 - click su una citta per caricare GTFS dal database
 - visualizzazione su mappa (OpenStreetMap + Leaflet) di fermate e linee principali
 - upload GTFS `.zip` diretto dalla homepage (con import automatico nel DB Docker)
+- generazione automatica del catalogo ticket base per ogni nuova agency importata
 
 ### Setup rapido
 
@@ -399,6 +400,10 @@ Lo script supporta:
 - feed come cartella o `.zip`
 - upsert (aggiornamento dati gia presenti)
 - fallback automatico per `calendar.txt` e `fare_attributes.txt` se mancanti
+- sincronizzazione automatica dei `ticket_type` per la citta importata, con seed base:
+  - `Biglietto 90 minuti`
+  - `Pass giornaliero`
+  - `Pass settimanale`
 
 Verifica rapida import:
 
