@@ -34,6 +34,7 @@ Questo comando:
 - attende che il database sia pronto
 - installa le dipendenze npm se necessario
 - importa automaticamente il feed bundled di Cagliari se non e` ancora presente
+- esegue l'import bundled con un limite heap Node piu` ampio per gestire feed GTFS pesanti
 - riallinea il catalogo ticket base per le agency gia` presenti, inclusa Cagliari se era stata importata in precedenza
 - avvia l'app in sviluppo su `http://localhost:3000`
 
@@ -76,14 +77,20 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/gtfs_ticketing
 TICKET_QR_SECRET=change-me-with-a-long-random-secret
 ```
 
-3. Installa dipendenze e avvia:
+3. Avvia PostgreSQL:
+
+```bash
+docker compose up -d postgres
+```
+
+4. Installa dipendenze e avvia:
 
 ```bash
 npm install
 npm run dev
 ```
 
-4. Apri:
+5. Apri:
 
 ```text
 http://localhost:3000
@@ -312,6 +319,9 @@ docker compose ps
 
 ```text
 gtfs-hub/
+  app/
+    api/
+  components/
   db/
     schema.sql
     extend_ticketing.sql
@@ -324,13 +334,24 @@ gtfs-hub/
   data/
     gtfs/
       incoming/
+        BARI/
         BARI_norm/
+        BOLOGNA/
         BOLOGNA_norm/
         CAG_sample.zip
+        uploads/
         import_BRI.sql
         import_BOL.sql
+      raw/
+        MIL/
+        ROM/
+  lib/
   scripts/
+    import-bundled-gtfs.mjs
     import_gtfs.ps1
+    run-project.mjs
+  types/
+  docker-compose.yml
   README.md
 ```
 
