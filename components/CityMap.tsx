@@ -777,8 +777,14 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
           <div className="ticket-modal">
             <div className="ticket-modal-head">
               <div>
-                <p className="ticket-modal-title">Acquista biglietto digitale</p>
-                <p className="ticket-modal-subtitle">Scegli agency e tariffa a tempo per la citta selezionata.</p>
+                <p className="ticket-modal-title">
+                  {purchaseStatus === "success" && purchaseResult ? "Biglietto pronto" : "Acquista biglietto"}
+                </p>
+                <p className="ticket-modal-subtitle">
+                  {purchaseStatus === "success" && purchaseResult
+                    ? "Mostra questo QR in caso di controllo."
+                    : "Completa i dati e conferma l'acquisto."}
+                </p>
               </div>
               <button type="button" className="ticket-modal-close" onClick={closePurchaseModal}>
                 Chiudi
@@ -787,8 +793,9 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
 
             {purchaseStatus === "success" && purchaseResult ? (
               <div className="ticket-modal-result">
-                <p className="ticket-modal-success">Acquisto completato</p>
-                <p className="ticket-modal-line">Agency: {purchaseResult.agency.name}</p>
+                <p className="ticket-modal-success">
+                  {getTicketDisplayName(purchaseResult.ticketType.name, purchaseResult.ticketType.durationMinutes)}
+                </p>
                 <p className="ticket-modal-line">
                   Titolo: {getTicketDisplayName(purchaseResult.ticketType.name, purchaseResult.ticketType.durationMinutes)} · {" "}
                   {getTicketMetaLabel(
@@ -797,27 +804,11 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
                     purchaseResult.ticketType.priceCents
                   )}
                 </p>
-                <p className="ticket-modal-line">Booking: {purchaseResult.bookingCode}</p>
-                <p className="ticket-modal-line">Ticket: {purchaseResult.tickets[0]?.ticketCode ?? "-"}</p>
-                <a
-                  className="ticket-modal-cta"
-                  href={`/api/tickets/${purchaseResult.tickets[0]?.ticketCode ?? ""}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Vai a validare
-                </a>
-                <p className="ticket-modal-help">Usa questo endpoint:</p>
-                <code className="ticket-modal-code">
-                  POST /api/tickets/{purchaseResult.tickets[0]?.ticketCode ?? "TICKET_CODE"}/validate
-                </code>
                 {purchaseResult.tickets[0]?.qrToken ? (
                   <div className="ticket-modal-qr-shell">
                     <QrTicket value={purchaseResult.tickets[0].qrToken} size={184} className="ticket-modal-qr" />
                   </div>
                 ) : null}
-                <p className="ticket-modal-help">QR firmato:</p>
-                <code className="ticket-modal-code">{purchaseResult.tickets[0]?.qrToken ?? "-"}</code>
               </div>
             ) : (
               <form className="ticket-modal-form" onSubmit={handlePurchaseSubmit}>

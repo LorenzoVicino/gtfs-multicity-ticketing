@@ -1098,20 +1098,27 @@ body {
 
 .ticket-modal-result {
   display: grid;
-  gap: 0.26rem;
+  justify-items: center;
+  gap: 0.9rem;
+  padding-top: 0.35rem;
 }
 
 .ticket-modal-success {
   margin: 0;
   color: #0b4f28;
-  font-size: 0.88rem;
+  font-size: 1rem;
   font-weight: 700;
+  text-align: center;
 }
 
 .ticket-modal-line {
   margin: 0;
   color: var(--ink);
   font-size: 0.85rem;
+}
+
+.ticket-modal-result > .ticket-modal-line {
+  display: none;
 }
 
 .ticket-modal-help {
@@ -1148,10 +1155,11 @@ body {
 .ticket-modal-qr-shell {
   display: grid;
   place-items: center;
-  margin-top: 0.2rem;
-  padding: 0.55rem;
-  border-radius: 12px;
-  border: 1px solid rgba(15, 123, 62, 0.14);
+  width: 100%;
+  max-width: 280px;
+  padding: 0.7rem;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 123, 62, 0.12);
   background:
     radial-gradient(circle at top left, rgba(20, 136, 73, 0.08), transparent 48%),
     #f6fbf7;
