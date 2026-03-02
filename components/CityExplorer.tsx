@@ -685,7 +685,6 @@ export function CityExplorer() {
       setWalletStatus("ready");
       setWalletEmail(result.email);
       setSelectedWalletTicketCode(result.ticketCode ?? localBooking.tickets[0]?.ticketCode ?? null);
-      setIsWalletOpen(true);
     }
   }
 
