@@ -91,6 +91,20 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function withNodeHeapSize(env, heapSizeMb) {
+  const current = env.NODE_OPTIONS?.trim() ?? "";
+  const heapFlag = `--max-old-space-size=${heapSizeMb}`;
+
+  if (current.includes("--max-old-space-size=")) {
+    return env;
+  }
+
+  return {
+    ...env,
+    NODE_OPTIONS: current ? `${current} ${heapFlag}` : heapFlag
+  };
+}
+
 function describeContainerStatus(status) {
   switch (status) {
     case "created":
@@ -170,7 +184,9 @@ async function main() {
   }
 
   console.log("Verifica dataset bundled aggiuntivi...");
-  await run("node", ["scripts/import-bundled-gtfs.mjs"]);
+  await run("node", ["scripts/import-bundled-gtfs.mjs"], {
+    env: withNodeHeapSize(process.env, 4096)
+  });
 
   if (setupOnly) {
     console.log("Setup completato. Database attivo e dipendenze pronte.");

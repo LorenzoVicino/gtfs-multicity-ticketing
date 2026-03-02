@@ -1,10 +1,12 @@
-import { promises as fs } from "node:fs";
+import { createReadStream, createWriteStream, promises as fs } from "node:fs";
 import path from "node:path";
+import { Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import AdmZip from "adm-zip";
-import { parse } from "csv-parse/sync";
-import { stringify } from "csv-stringify/sync";
+import { parse } from "csv-parse";
+import { stringify } from "csv-stringify";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -149,8 +151,20 @@ async function findFeedFile(dir, targetLower) {
 }
 
 async function writeCsvFile(filePath, columns, rows) {
-  const csv = stringify(rows, { header: true, columns });
-  await fs.writeFile(filePath, csv, "utf8");
+  await new Promise((resolve, reject) => {
+    const output = createWriteStream(filePath, { encoding: "utf8" });
+    const stringifier = stringify({ header: true, columns });
+
+    output.on("finish", resolve);
+    output.on("error", reject);
+    stringifier.on("error", reject);
+
+    stringifier.pipe(output);
+    for (const row of rows) {
+      stringifier.write(row);
+    }
+    stringifier.end();
+  });
 }
 
 async function ensureOptionalFile(filePath, columns) {
@@ -158,24 +172,32 @@ async function ensureOptionalFile(filePath, columns) {
 }
 
 async function normalizeCsv(inputPath, outputPath, columns) {
-  const text = await fs.readFile(inputPath, "utf8");
-  const records = parse(text, {
+  const parser = parse({
     columns: true,
     bom: true,
     skip_empty_lines: true,
     relax_column_count: true
   });
-
-  const normalized = records.map((row) => {
-    const next = {};
-    for (const column of columns) {
-      const value = row[column];
-      next[column] = value == null ? "" : String(value);
+  const transformer = new Transform({
+    objectMode: true,
+    transform(row, _encoding, callback) {
+      const next = {};
+      for (const column of columns) {
+        const value = row[column];
+        next[column] = value == null ? "" : String(value);
+      }
+      callback(null, next);
     }
-    return next;
   });
+  const stringifier = stringify({ header: true, columns });
 
-  await writeCsvFile(outputPath, columns, normalized);
+  await pipeline(
+    createReadStream(inputPath, { encoding: "utf8" }),
+    parser,
+    transformer,
+    stringifier,
+    createWriteStream(outputPath, { encoding: "utf8" })
+  );
 }
 
 async function cityExists(cityCode) {
