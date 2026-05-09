@@ -5,6 +5,20 @@ declare global {
   var pgPool: Pool | undefined;
 }
 
+function normalizeConnectionString(connectionString: string): string {
+  try {
+    const url = new URL(connectionString);
+
+    if (url.searchParams.get("sslmode") === "require" && !url.searchParams.has("uselibpqcompat")) {
+      url.searchParams.set("uselibpqcompat", "true");
+    }
+
+    return url.toString();
+  } catch {
+    return connectionString;
+  }
+}
+
 function getPool(): Pool {
   const connectionString = process.env.DATABASE_URL;
 
@@ -13,11 +27,8 @@ function getPool(): Pool {
   }
 
   if (!global.pgPool) {
-    const useSsl = connectionString.includes("sslmode=require");
-
     global.pgPool = new Pool({
-      connectionString,
-      ssl: useSsl ? { rejectUnauthorized: false } : undefined
+      connectionString: normalizeConnectionString(connectionString)
     });
   }
 
