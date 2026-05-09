@@ -13,8 +13,11 @@ function getPool(): Pool {
   }
 
   if (!global.pgPool) {
+    const useSsl = connectionString.includes("sslmode=require");
+
     global.pgPool = new Pool({
-      connectionString
+      connectionString,
+      ssl: useSsl ? { rejectUnauthorized: false } : undefined
     });
   }
 
