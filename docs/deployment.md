@@ -2,6 +2,8 @@
 
 Il deploy supportato non usa Vercel né Supabase. L’app Next.js e PostgreSQL vengono eseguiti con Docker Compose; il database non espone porte pubbliche e l’app ascolta solo su `127.0.0.1` per essere pubblicata tramite un reverse proxy TLS.
 
+`vercel.json` disattiva esplicitamente tutti i deploy Git automatici dell’eventuale progetto Vercel storico. Può essere rimosso dopo aver scollegato il repository da **Vercel → Project Settings → Git → Disconnect**.
+
 ## Preparazione
 
 ```bash
