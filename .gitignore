@@ -18,6 +18,7 @@ yarn-error.log*
 # env
 .env*
 !.env.example
+deploy.env
 
 # typescript
 *.tsbuildinfo
@@ -34,4 +35,3 @@ db/dump_pg.sql
 
 # thesis material kept local, not versioned
 docs/tesi/
-

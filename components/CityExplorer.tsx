@@ -5,13 +5,32 @@ import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } fro
 import { QrTicket } from "@/components/QrTicket";
 import { getTicketDisplayName, getTicketMetaLabel } from "@/lib/ticket-display";
 import type { City, CityGtfsPayload, RouteLine } from "@/types/gtfs";
+import type { GtfsBuilderDraft } from "@/types/gtfs-builder";
 
 const CityMap = dynamic(() => import("@/components/CityMap").then((mod) => mod.CityMap), {
   ssr: false
 });
 
+const GtfsBuilder = dynamic(() => import("@/components/GtfsBuilder").then((mod) => mod.GtfsBuilder), {
+  ssr: false
+});
+
 const TRANSITION_MS = 620;
 const OVERLAY_EXIT_MS = 240;
+const HERO_BACKGROUND_INTERVAL_MS = 8_000;
+const HERO_BACKGROUND_FADE_MS = 1_400;
+const HERO_BACKGROUNDS = [
+  "/hero-backgrounds/current.webp",
+  "/hero-backgrounds/guillaume-lebelt.webp",
+  "/hero-backgrounds/chan-lee.webp",
+  "/hero-backgrounds/alain-duss.webp",
+  "/hero-backgrounds/amy-chen.webp",
+  "/hero-backgrounds/mitchell-johnson.webp",
+  "/hero-backgrounds/ash-gerlach.webp",
+  "/hero-backgrounds/kit-suman.webp",
+  "/hero-backgrounds/jeshoots.webp",
+  "/hero-backgrounds/tapio-haaja.webp"
+] as const;
 type Stage = "hero" | "leaving" | "map";
 type RouteCategoryFilter = "all" | "core" | "secondary" | "local";
 type WalletStatus = "idle" | "loading" | "ready" | "error";
@@ -154,6 +173,12 @@ export function CityExplorer() {
   const [uploadCityName, setUploadCityName] = useState("");
   const [isUploadingGtfs, setIsUploadingGtfs] = useState(false);
   const [isUploadPanelOpen, setIsUploadPanelOpen] = useState(false);
+  const [isGtfsBuilderOpen, setIsGtfsBuilderOpen] = useState(false);
+  const [gtfsBuilderMode, setGtfsBuilderMode] = useState<"create" | "edit">("create");
+  const [gtfsBuilderDraft, setGtfsBuilderDraft] = useState<GtfsBuilderDraft | undefined>();
+  const [gtfsBuilderSourceLabel, setGtfsBuilderSourceLabel] = useState<string | undefined>();
+  const [heroBackgroundIndex, setHeroBackgroundIndex] = useState(0);
+  const [heroPreviousBackgroundIndex, setHeroPreviousBackgroundIndex] = useState<number | null>(null);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [isWalletClosing, setIsWalletClosing] = useState(false);
   const [walletEmail, setWalletEmail] = useState("");
@@ -167,8 +192,11 @@ export function CityExplorer() {
   const [isStopPanelOpen, setIsStopPanelOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const gtfsInputRef = useRef<HTMLInputElement | null>(null);
+  const gtfsBuilderTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const gtfsEditTriggerRef = useRef<HTMLButtonElement | null>(null);
   const walletCloseTimerRef = useRef<number | null>(null);
   const walletQrCloseTimerRef = useRef<number | null>(null);
+  const heroBackgroundIndexRef = useRef(0);
 
   const readSessionWallet = useCallback((cityCode: string): WalletBooking[] => {
     if (typeof window === "undefined") {
@@ -209,6 +237,47 @@ export function CityExplorer() {
     const data = (await response.json()) as { cities: City[] };
     setCities(data.cities);
   }, []);
+
+  const closeGtfsBuilder = useCallback(() => {
+    setIsGtfsBuilderOpen(false);
+    setGtfsBuilderDraft(undefined);
+    window.requestAnimationFrame(() => (gtfsBuilderMode === "edit" ? gtfsEditTriggerRef.current : gtfsBuilderTriggerRef.current)?.focus());
+  }, [gtfsBuilderMode]);
+
+  const openEmptyGtfsBuilder = useCallback(() => {
+    setGtfsBuilderMode("create");
+    setGtfsBuilderDraft(undefined);
+    setGtfsBuilderSourceLabel(undefined);
+    setIsGtfsBuilderOpen(true);
+  }, []);
+
+  const openCityGtfsBuilder = useCallback(async () => {
+    if (!selectedCode) return;
+    try {
+      setError(null);
+      setIsLoading(true);
+      const response = await fetch(`/api/cities/${encodeURIComponent(selectedCode)}/gtfs/edit`);
+      const result = (await response.json().catch(() => ({}))) as { draft?: GtfsBuilderDraft; error?: string; details?: string };
+      if (!response.ok || !result.draft) throw new Error(result.details ?? result.error ?? "Apertura GTFS fallita");
+      setGtfsBuilderMode("edit");
+      setGtfsBuilderDraft(result.draft);
+      setGtfsBuilderSourceLabel(`${result.draft.project.cityName} · GTFS Hub`);
+      setIsGtfsBuilderOpen(true);
+    } catch (openError) {
+      setError(openError instanceof Error ? openError.message : "Apertura GTFS fallita");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCode]);
+
+  const handleGtfsBuilderImported = useCallback(async (cityCode: string, cityName: string) => {
+    await loadCities();
+    setSelectedCode(cityCode);
+    setQuery(cityName);
+    setIsDropdownOpen(false);
+    setIsGtfsBuilderOpen(false);
+    setStage("leaving");
+  }, [loadCities]);
 
   useEffect(() => {
     let ignore = false;
@@ -347,6 +416,36 @@ export function CityExplorer() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const nextIndex = (heroBackgroundIndex + 1) % HERO_BACKGROUNDS.length;
+    const nextImage = new Image();
+    nextImage.src = HERO_BACKGROUNDS[nextIndex];
+  }, [heroBackgroundIndex]);
+
+  useEffect(() => {
+    if (stage !== "hero" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      const currentIndex = heroBackgroundIndexRef.current;
+      const nextIndex = (currentIndex + 1) % HERO_BACKGROUNDS.length;
+      setHeroPreviousBackgroundIndex(currentIndex);
+      heroBackgroundIndexRef.current = nextIndex;
+      setHeroBackgroundIndex(nextIndex);
+    }, HERO_BACKGROUND_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [stage]);
+
+  useEffect(() => {
+    if (heroPreviousBackgroundIndex === null) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setHeroPreviousBackgroundIndex(null), HERO_BACKGROUND_FADE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [heroBackgroundIndex, heroPreviousBackgroundIndex]);
 
   useEffect(() => {
     if ((!isWalletOpen || isWalletClosing) && (!isWalletQrOpen || isWalletQrClosing)) {
@@ -739,47 +838,6 @@ export function CityExplorer() {
     return file.name.toLowerCase().endsWith(".zip");
   }
 
-  function uploadGtfsWithProgress(formData: FormData): Promise<{
-    error?: string;
-    details?: string;
-    cityCode?: string;
-    cityName?: string;
-  }> {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/gtfs/upload");
-      xhr.responseType = "json";
-
-      xhr.upload.onprogress = (event) => {
-        if (!event.lengthComputable) {
-          return;
-        }
-        setGtfsUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
-      };
-
-      xhr.onerror = () => {
-        reject(new Error("Upload GTFS non riuscito"));
-      };
-
-      xhr.onload = () => {
-        const result =
-          typeof xhr.response === "object" && xhr.response !== null
-            ? (xhr.response as { error?: string; details?: string; cityCode?: string; cityName?: string })
-            : {};
-
-        if (xhr.status >= 200 && xhr.status < 300) {
-          setGtfsUploadProgress(100);
-          resolve(result);
-          return;
-        }
-
-        reject(new Error(result.details ?? result.error ?? "Import GTFS fallito"));
-      };
-
-      xhr.send(formData);
-    });
-  }
-
   async function onGtfsFileSelected(file: File | null) {
     if (!file) {
       return;
@@ -809,13 +867,15 @@ export function CityExplorer() {
       formData.append("file", file);
       formData.append("cityCode", cityCode);
       formData.append("cityName", cityName);
-
-      await uploadGtfsWithProgress(formData);
-
-      await loadCities();
-      setSelectedCode(cityCode);
-      setQuery(cityName);
-      setStage("leaving");
+      setGtfsUploadProgress(30);
+      const response = await fetch("/api/gtfs/parse", { method: "POST", body: formData });
+      const result = (await response.json().catch(() => ({}))) as { draft?: GtfsBuilderDraft; error?: string; details?: string };
+      if (!response.ok || !result.draft) throw new Error(result.details ?? result.error ?? "Apertura GTFS fallita");
+      setGtfsUploadProgress(100);
+      setGtfsBuilderMode("edit");
+      setGtfsBuilderDraft(result.draft);
+      setGtfsBuilderSourceLabel(file.name);
+      setIsGtfsBuilderOpen(true);
       setGtfsUploadError(null);
     } catch (uploadError) {
       setGtfsUploadError(uploadError instanceof Error ? uploadError.message : "Import GTFS fallito");
@@ -830,7 +890,24 @@ export function CityExplorer() {
 
   return (
     <main className="experience-root">
-      <section className={`hero-screen ${stage !== "hero" ? "hero-screen-leaving" : ""}`}>
+      <section
+        className={`hero-screen ${stage !== "hero" ? "hero-screen-leaving" : ""}`}
+        aria-hidden={isGtfsBuilderOpen ? true : undefined}
+        inert={isGtfsBuilderOpen ? true : undefined}
+      >
+        <div className="hero-background" aria-hidden="true">
+          {heroPreviousBackgroundIndex !== null ? (
+            <div
+              className="hero-background-image hero-background-image-previous"
+              style={{ backgroundImage: `url(${HERO_BACKGROUNDS[heroPreviousBackgroundIndex]})` }}
+            />
+          ) : null}
+          <div
+            key={HERO_BACKGROUNDS[heroBackgroundIndex]}
+            className="hero-background-image hero-background-image-current"
+            style={{ backgroundImage: `url(${HERO_BACKGROUNDS[heroBackgroundIndex]})` }}
+          />
+        </div>
         <div className="hero-content">
           <p className="hero-kicker">GTFS Hub</p>
           <h1 className="hero-title">Scegli la tua citta</h1>
@@ -887,6 +964,22 @@ export function CityExplorer() {
 
             {isUploadPanelOpen ? (
               <>
+                <div className="gtfs-builder-callout">
+                  <div className="gtfs-builder-callout-copy">
+                    <span className="gtfs-builder-badge">Nuovo</span>
+                    <strong>Non hai ancora un GTFS?</strong>
+                    <p>Disegna fermate e linee sulla mappa, aggiungi le corse e genera tutto da zero.</p>
+                  </div>
+                  <button
+                    ref={gtfsBuilderTriggerRef}
+                    type="button"
+                    className="gtfs-builder-launch"
+                    onClick={openEmptyGtfsBuilder}
+                  >
+                    Crea GTFS da zero <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+                <div className="gtfs-upload-divider"><span>oppure importa un archivio</span></div>
                 <p className="gtfs-upload-subtitle">
                   Carica un file GTFS (.zip) e visualizzalo direttamente sulla mappa.
                 </p>
@@ -933,7 +1026,7 @@ export function CityExplorer() {
                     disabled={isUploadingGtfs}
                     onClick={() => gtfsInputRef.current?.click()}
                   >
-                    {isUploadingGtfs ? "Import in corso..." : "Carica GTFS"}
+                    {isUploadingGtfs ? "Apertura in corso..." : "Apri e modifica GTFS"}
                   </button>
                   {isUploadingGtfs ? (
                     <div className="gtfs-upload-progress" aria-live="polite">
@@ -943,7 +1036,7 @@ export function CityExplorer() {
                           style={{ width: `${Math.max(gtfsUploadProgress, 4)}%` }}
                         />
                       </div>
-                      <p className="gtfs-upload-progress-label">Caricamento {gtfsUploadProgress}%</p>
+                      <p className="gtfs-upload-progress-label">Preparazione Studio {gtfsUploadProgress}%</p>
                     </div>
                   ) : null}
                   <p className="gtfs-upload-format">Formato supportato: .zip</p>
@@ -957,7 +1050,11 @@ export function CityExplorer() {
         </div>
       </section>
 
-      <section className={`map-screen ${stage === "hero" ? "map-screen-hidden" : "map-screen-active"}`}>
+      <section
+        className={`map-screen ${stage === "hero" ? "map-screen-hidden" : "map-screen-active"}`}
+        aria-hidden={isGtfsBuilderOpen ? true : undefined}
+        inert={isGtfsBuilderOpen ? true : undefined}
+      >
         <div className={`map-stage ${stage === "map" ? "map-stage-visible" : ""}`}>
           <div className="map-fullscreen">
             <CityMap
@@ -1113,6 +1210,17 @@ export function CityExplorer() {
         >
           Cambia citta
         </button>
+        {payload ? (
+          <button
+            ref={gtfsEditTriggerRef}
+            className={`map-edit map-ui-enter map-ui-delay-1 ${isStopPanelOpen ? "map-floating-shifted" : ""}`}
+            type="button"
+            disabled={isLoading}
+            onClick={() => void openCityGtfsBuilder()}
+          >
+            Modifica GTFS
+          </button>
+        ) : null}
       </section>
 
       {isWalletOpen ? (
@@ -1345,7 +1453,15 @@ export function CityExplorer() {
           </div>
         </div>
       ) : null}
+      {isGtfsBuilderOpen ? (
+        <GtfsBuilder
+          onClose={closeGtfsBuilder}
+          onImported={handleGtfsBuilderImported}
+          initialDraft={gtfsBuilderDraft}
+          mode={gtfsBuilderMode}
+          sourceLabel={gtfsBuilderSourceLabel}
+        />
+      ) : null}
     </main>
   );
 }
-
