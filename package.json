@@ -19,7 +19,7 @@
   "dependencies": {
     "adm-zip": "^0.6.0",
     "csv-parse": "^5.6.0",
-    "csv-stringify": "^6.5.2",
+    "csv-stringify": "^6.8.3",
     "leaflet": "^1.9.4",
     "next": "^16.3.2",
     "pg": "^8.13.1",
