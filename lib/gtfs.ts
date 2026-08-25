@@ -202,6 +202,7 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
       lon::text AS stop_lon
     FROM transport.stop
     WHERE city_id = $1
+      AND is_active
     ORDER BY name ASC
     LIMIT 5000
     `,
@@ -232,6 +233,8 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
         ON a.agency_id = r.agency_id
        AND a.city_id = r.city_id
       WHERE t.city_id = $1
+        AND r.is_active
+        AND EXISTS (SELECT 1 FROM transport.stop_time present WHERE present.trip_id = t.trip_id)
     )
     SELECT
       rt.route_id,
@@ -251,6 +254,7 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
     JOIN transport.stop s
       ON s.stop_id = st.stop_id
      AND s.city_id = $1
+     AND s.is_active
     WHERE rt.rn = 1
     ORDER BY rt.route_id, st.stop_sequence
     LIMIT 15000
@@ -262,8 +266,9 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
     `
     WITH trip_counts AS (
       SELECT route_id, COUNT(*)::int AS trips_count
-      FROM transport.trip
+      FROM transport.trip t
       WHERE city_id = $1
+        AND EXISTS (SELECT 1 FROM transport.stop_time present WHERE present.trip_id = t.trip_id)
       GROUP BY route_id
     ),
     stop_events AS (
@@ -273,6 +278,7 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
         ON st.trip_id = t.trip_id
        AND st.city_id = t.city_id
       WHERE t.city_id = $1
+        AND EXISTS (SELECT 1 FROM transport.stop_time present WHERE present.trip_id = t.trip_id)
       GROUP BY t.route_id
     )
     SELECT
@@ -283,6 +289,7 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
     LEFT JOIN trip_counts tc ON tc.route_id = r.route_id
     LEFT JOIN stop_events se ON se.route_id = r.route_id
     WHERE r.city_id = $1
+      AND r.is_active
     `,
     [cityId]
   );

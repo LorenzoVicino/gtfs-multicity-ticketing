@@ -1,7 +1,6 @@
-import { Pool } from "pg";
+import { Pool, type PoolConfig } from "pg";
 
 declare global {
-  // eslint-disable-next-line no-var
   var pgPool: Pool | undefined;
 }
 
@@ -22,14 +21,22 @@ function normalizeConnectionString(connectionString: string): string {
 function getPool(): Pool {
   const connectionString = process.env.DATABASE_URL;
 
-  if (!connectionString) {
-    throw new Error("Missing DATABASE_URL environment variable");
-  }
-
   if (!global.pgPool) {
-    global.pgPool = new Pool({
-      connectionString: normalizeConnectionString(connectionString)
-    });
+    let config: PoolConfig;
+    if (connectionString) {
+      config = { connectionString: normalizeConnectionString(connectionString) };
+    } else if (process.env.PGHOST && process.env.PGUSER && process.env.PGDATABASE) {
+      config = {
+        host: process.env.PGHOST,
+        port: Number(process.env.PGPORT || 5432),
+        user: process.env.PGUSER,
+        password: process.env.PGPASSWORD,
+        database: process.env.PGDATABASE
+      };
+    } else {
+      throw new Error("Missing DATABASE_URL or PostgreSQL PG* environment variables");
+    }
+    global.pgPool = new Pool(config);
   }
 
   return global.pgPool;

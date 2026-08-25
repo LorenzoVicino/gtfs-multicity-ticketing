@@ -1,4 +1,14 @@
 declare module "pg" {
+  export type PoolConfig = {
+    connectionString?: string;
+    ssl?: boolean | { rejectUnauthorized?: boolean };
+    host?: string;
+    port?: number;
+    user?: string;
+    password?: string;
+    database?: string;
+  };
+
   export type QueryResult<T = unknown> = {
     rows: T[];
     rowCount: number;
@@ -10,10 +20,7 @@ declare module "pg" {
   }
 
   export class Pool {
-    constructor(config?: {
-      connectionString?: string;
-      ssl?: boolean | { rejectUnauthorized?: boolean };
-    });
+    constructor(config?: PoolConfig);
     query<T = unknown>(text: string, values?: unknown[]): Promise<QueryResult<T>>;
     connect(): Promise<PoolClient>;
   }

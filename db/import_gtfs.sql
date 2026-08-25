@@ -97,6 +97,17 @@ SELECT city_id
 FROM city
 WHERE city_code = :'city_code';
 
+-- A feed upload is authoritative for the current city. Keep referenced historical
+-- rows, but hide items no longer present and rebuild current stop times.
+UPDATE agency SET is_active = FALSE WHERE city_id IN (SELECT city_id FROM gtfs_import_ctx);
+UPDATE route SET is_active = FALSE WHERE city_id IN (SELECT city_id FROM gtfs_import_ctx);
+UPDATE stop SET is_active = FALSE WHERE city_id IN (SELECT city_id FROM gtfs_import_ctx);
+UPDATE fare SET is_active = FALSE WHERE city_id IN (SELECT city_id FROM gtfs_import_ctx);
+DELETE FROM stop_time st
+USING trip t, gtfs_import_ctx ctx
+WHERE st.trip_id = t.trip_id
+  AND t.city_id = ctx.city_id;
+
 INSERT INTO agency (
     city_id, gtfs_agency_id, name, url, timezone, lang_code, phone
 )
@@ -450,4 +461,3 @@ WHERE NOT EXISTS (
 );
 
 COMMIT;
-

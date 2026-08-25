@@ -146,34 +146,9 @@ async function normalizeCsv(inputPath: string, outputPath: string, columns: stri
   await writeCsvFile(outputPath, columns, normalized);
 }
 
-function runDockerImport(sqlPathInWorkdir: string): Promise<void> {
+function runImportProcess(command: string, args: string[], label: string, env = process.env): Promise<void> {
   return new Promise((resolve, reject) => {
-    const args = [
-      "run",
-      "--rm",
-      "--network",
-      "container:gtfs-postgres",
-      "-e",
-      "PGPASSWORD=postgres",
-      "-v",
-      `${process.cwd()}:/work`,
-      "-w",
-      "/work",
-      "postgres:16",
-      "psql",
-      "-h",
-      "localhost",
-      "-U",
-      "postgres",
-      "-d",
-      "gtfs_ticketing",
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-f",
-      sqlPathInWorkdir
-    ];
-
-    const child = spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, { env, stdio: ["ignore", "pipe", "pipe"] });
     let stderr = "";
 
     child.stderr.on("data", (chunk) => {
@@ -181,7 +156,7 @@ function runDockerImport(sqlPathInWorkdir: string): Promise<void> {
     });
 
     child.on("error", (error) => {
-      reject(new Error(`Errore avvio docker: ${error.message}`));
+      reject(new Error(`Errore avvio ${label}: ${error.message}`));
     });
 
     child.on("close", (code) => {
@@ -193,6 +168,34 @@ function runDockerImport(sqlPathInWorkdir: string): Promise<void> {
       reject(new Error(stderr.trim() || `Import fallito con exit code ${code}`));
     });
   });
+}
+
+function runDockerImport(sqlPathInWorkdir: string): Promise<void> {
+  return runImportProcess("docker", [
+    "run", "--rm", "--network", "container:gtfs-postgres",
+    "-e", "PGPASSWORD=postgres",
+    "-v", `${process.cwd()}:/work`, "-w", "/work",
+    "postgres:16", "psql", "-h", "localhost", "-U", "postgres", "-d", "gtfs_ticketing",
+    "-v", "ON_ERROR_STOP=1", "-f", sqlPathInWorkdir
+  ], "docker");
+}
+
+function runDirectImport(sqlPath: string): Promise<void> {
+  const connectionString = process.env.DATABASE_URL;
+  if (connectionString) {
+    return runImportProcess(process.env.PSQL_BIN || "psql", [connectionString, "-v", "ON_ERROR_STOP=1", "-f", sqlPath], "psql");
+  }
+  if (!process.env.PGHOST || !process.env.PGUSER || !process.env.PGDATABASE) {
+    throw new Error("DATABASE_URL o variabili PostgreSQL PG* non configurate");
+  }
+  return runImportProcess(process.env.PSQL_BIN || "psql", [
+    "-h", process.env.PGHOST,
+    "-p", process.env.PGPORT || "5432",
+    "-U", process.env.PGUSER,
+    "-d", process.env.PGDATABASE,
+    "-v", "ON_ERROR_STOP=1",
+    "-f", sqlPath
+  ], "psql", { ...process.env, PGPASSWORD: process.env.PGPASSWORD || "" });
 }
 
 export async function importGtfsZip(params: ImportParams): Promise<void> {
@@ -244,19 +247,23 @@ export async function importGtfsZip(params: ImportParams): Promise<void> {
   }
 
   const template = await fs.readFile(path.join(process.cwd(), "db", "import_gtfs.sql"), "utf8");
+  const directImport = process.env.GTFS_IMPORT_MODE === "psql";
+  const importPath = (filePath: string) => directImport
+    ? toUnixPath(filePath)
+    : toUnixPath(path.join("/work", path.relative(process.cwd(), filePath)));
   const sql = template
-    .replaceAll(":'agency_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["agency.txt"])))}'`)
-    .replaceAll(":'routes_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["routes.txt"])))}'`)
-    .replaceAll(":'stops_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["stops.txt"])))}'`)
-    .replaceAll(":'calendar_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["calendar.txt"])))}'`)
-    .replaceAll(":'trips_file'", `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["trips.txt"])))}'`)
+    .replaceAll(":'agency_file'", `'${importPath(resolved["agency.txt"])}'`)
+    .replaceAll(":'routes_file'", `'${importPath(resolved["routes.txt"])}'`)
+    .replaceAll(":'stops_file'", `'${importPath(resolved["stops.txt"])}'`)
+    .replaceAll(":'calendar_file'", `'${importPath(resolved["calendar.txt"])}'`)
+    .replaceAll(":'trips_file'", `'${importPath(resolved["trips.txt"])}'`)
     .replaceAll(
       ":'stop_times_file'",
-      `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["stop_times.txt"])))}'`
+      `'${importPath(resolved["stop_times.txt"])}'`
     )
     .replaceAll(
       ":'fare_attributes_file'",
-      `'${toUnixPath(path.join("/work", path.relative(process.cwd(), resolved["fare_attributes.txt"])))}'`
+      `'${importPath(resolved["fare_attributes.txt"])}'`
     )
     .replaceAll(":'city_code'", `'${cityCode}'`)
     .replaceAll(":'city_name'", `'${params.cityName.replaceAll("'", "''")}'`)
@@ -265,6 +272,10 @@ export async function importGtfsZip(params: ImportParams): Promise<void> {
   const sqlFile = path.join(workDir, "import.sql");
   await fs.writeFile(sqlFile, sql, "utf8");
 
-  const sqlInWorkdir = toUnixPath(path.join("/work", path.relative(process.cwd(), sqlFile)));
-  await runDockerImport(sqlInWorkdir);
+  if (directImport) {
+    await runDirectImport(sqlFile);
+  } else {
+    const sqlInWorkdir = toUnixPath(path.join("/work", path.relative(process.cwd(), sqlFile)));
+    await runDockerImport(sqlInWorkdir);
+  }
 }
