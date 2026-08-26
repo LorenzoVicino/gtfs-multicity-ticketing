@@ -159,6 +159,12 @@ The database is named `gtfs_hub`. A development volume created before the rename
 `.env.local`, which is not version-controlled. For a deployed instance, rename the database in
 place as described in [docs/deployment.md](docs/deployment.md).
 
+`db/migrations/` holds one-off scripts that bring an **existing** database to the current schema,
+which the init scripts cannot do because they only run on an empty volume. Run them by hand, in
+numeric order, once per database; each one is idempotent. `001_drop_ticketing.sql` removes the ticketing tables that the
+application no longer has, and destroys their data permanently — back up and rehearse on a copy
+first, as described in [docs/deployment.md](docs/deployment.md).
+
 The bundled datasets make the demo reproducible. Before adding another feed, verify its license, attribution requirements, and compatibility with public redistribution.
 
 ## Security and governance
@@ -177,7 +183,7 @@ This remains a demonstration project. The feed upload, build, and validation end
 ```text
 app/                     Next.js pages and API routes
 components/              Map and GTFS Studio UI
-db/                      Schema, import, and indexes
+db/                      Schema, import, indexes, and migrations
 data/gtfs/               Reproducible feeds and supporting files
 docs/                    Operational documentation
 lib/                     Database, GTFS, ZIP, parsing, and services
