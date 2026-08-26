@@ -27,6 +27,7 @@ const OPTIONAL_FILES: Record<string, string[]> = {
     "end_date"
   ],
   "calendar_dates.txt": ["service_id", "date", "exception_type"],
+  "shapes.txt": ["shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence", "shape_dist_traveled"],
   "fare_attributes.txt": [
     "fare_id",
     "price",
@@ -61,6 +62,7 @@ const NORMALIZED_COLUMNS: Record<string, string[]> = {
   ],
   "calendar.txt": OPTIONAL_FILES["calendar.txt"],
   "calendar_dates.txt": OPTIONAL_FILES["calendar_dates.txt"],
+  "shapes.txt": OPTIONAL_FILES["shapes.txt"],
   "trips.txt": [
     "route_id",
     "service_id",
@@ -70,7 +72,8 @@ const NORMALIZED_COLUMNS: Record<string, string[]> = {
     "direction_id",
     "block_id",
     "wheelchair_accessible",
-    "bikes_allowed"
+    "bikes_allowed",
+    "shape_id"
   ],
   "stop_times.txt": [
     "trip_id",
@@ -259,6 +262,7 @@ export async function importGtfsZip(params: ImportParams): Promise<void> {
     .replaceAll(":'calendar_file'", `'${importPath(resolved["calendar.txt"])}'`)
     .replaceAll(":'calendar_dates_file'", `'${importPath(resolved["calendar_dates.txt"])}'`)
     .replaceAll(":'trips_file'", `'${importPath(resolved["trips.txt"])}'`)
+    .replaceAll(":'shapes_file'", `'${importPath(resolved["shapes.txt"])}'`)
     .replaceAll(
       ":'stop_times_file'",
       `'${importPath(resolved["stop_times.txt"])}'`

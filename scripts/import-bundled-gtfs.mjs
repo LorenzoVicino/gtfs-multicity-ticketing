@@ -28,6 +28,7 @@ const OPTIONAL_FILES = {
     "end_date"
   ],
   "calendar_dates.txt": ["service_id", "date", "exception_type"],
+  "shapes.txt": ["shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence", "shape_dist_traveled"],
   "fare_attributes.txt": [
     "fare_id",
     "price",
@@ -62,6 +63,7 @@ const NORMALIZED_COLUMNS = {
   ],
   "calendar.txt": OPTIONAL_FILES["calendar.txt"],
   "calendar_dates.txt": OPTIONAL_FILES["calendar_dates.txt"],
+  "shapes.txt": OPTIONAL_FILES["shapes.txt"],
   "trips.txt": [
     "route_id",
     "service_id",
@@ -71,7 +73,8 @@ const NORMALIZED_COLUMNS = {
     "direction_id",
     "block_id",
     "wheelchair_accessible",
-    "bikes_allowed"
+    "bikes_allowed",
+    "shape_id"
   ],
   "stop_times.txt": [
     "trip_id",
@@ -278,6 +281,10 @@ async function importZip({ zipPath, cityCode, cityName }) {
       `'${toUnixPath(path.join("/work", path.relative(repoRoot, resolved["calendar_dates.txt"])))}'`
     )
     .replaceAll(":'trips_file'", `'${toUnixPath(path.join("/work", path.relative(repoRoot, resolved["trips.txt"])))}'`)
+    .replaceAll(
+      ":'shapes_file'",
+      `'${toUnixPath(path.join("/work", path.relative(repoRoot, resolved["shapes.txt"])))}'`
+    )
     .replaceAll(
       ":'stop_times_file'",
       `'${toUnixPath(path.join("/work", path.relative(repoRoot, resolved["stop_times.txt"])))}'`

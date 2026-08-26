@@ -7,6 +7,7 @@ The repository began as a university project about designing a PostgreSQL databa
 ## Features
 
 - Explore cities, stops, and routes on an OpenStreetMap/Leaflet map.
+- Draw route geometry from `shapes.txt` when the feed provides it, and say so when the line is reconstructed from the stop sequence instead.
 - Filter routes by name, category, and agency.
 - Create a feed from scratch with **GTFS Studio**.
 - Open and edit an existing `.zip` archive.
@@ -167,12 +168,25 @@ rehearse on a copy first, as described in [docs/deployment.md](docs/deployment.m
 
 - `001_drop_ticketing.sql` removes the ticketing tables the application no longer has.
 - `002_calendar_correctness.sql` moves trips off `service_date` and adds `calendar_date`.
+- `003_shapes.sql` adds `shape`, `shape_point` and `trip.shape_id`. Additive: nothing is deleted.
 
 ### How service on a date is resolved
 
 A trip is not tied to a date. `active_calendar_ids(city_id, date)` returns the services running on
 a date: those whose weekly pattern in `calendar.txt` covers it and that no `calendar_dates.txt`
 exception removes, plus those an exception adds. Departures then filter trips on those calendars.
+
+### Where route geometry comes from
+
+A route is drawn from the `shapes.txt` path of a representative trip that has one. Points are thinned
+to at most 200 per route — city-scale rendering cannot use the point-every-few-metres density feeds
+carry — keeping the first and last exactly. Thinning per route rather than capping the total matters:
+a global cap would leave the last routes with half a polyline.
+
+When a feed carries no shape for a route, the line falls back to connecting its stops in sequence.
+That draws straight segments between stops rather than the path a vehicle takes, so those routes are
+labelled **tracciato approssimato** in the line list. The bundled Bari and Bologna feeds have no
+`shapes.txt`; the Cagliari sample does.
 
 This means **a feed that does not cover today has no departures today**, which is correct rather
 than broken. The bundled demo feeds are expired: the Cagliari sample covers March 2026 and the
