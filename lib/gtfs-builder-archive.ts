@@ -102,6 +102,18 @@ export function createGtfsArchive(draft: GtfsBuilderDraft): Buffer {
   );
 
   zip.addFile(
+    "calendar_dates.txt",
+    csv(
+      ["service_id", "date", "exception_type"],
+      draft.services.flatMap((service) => (service.exceptions ?? []).map((exception) => ({
+        service_id: safeGtfsId(service.id, "SERVICE"),
+        date: gtfsDate(exception.date),
+        exception_type: exception.exceptionType
+      })))
+    )
+  );
+
+  zip.addFile(
     "trips.txt",
     csv(
       ["route_id", "service_id", "trip_id", "trip_headsign", "trip_short_name", "direction_id", "block_id", "wheelchair_accessible", "bikes_allowed", "shape_id"],
@@ -115,16 +127,18 @@ export function createGtfsArchive(draft: GtfsBuilderDraft): Buffer {
         block_id: trip.blockId?.trim() ?? "",
         wheelchair_accessible: trip.wheelchairAccessible ?? "0",
         bikes_allowed: trip.bikesAllowed ?? "0",
-        shape_id: `SHAPE_${safeGtfsId(trip.id, "TRIP")}`
+        shape_id: safeGtfsId(trip.shapeId ?? "", "") || `SHAPE_${safeGtfsId(trip.id, "TRIP")}`
       }))
     )
   );
 
   const shapeDistanceByTrip = new Map<string, number[]>();
   const shapeRows: Record<string, string | number>[] = [];
+  const generatedShapeIds = new Set<string>();
   for (const trip of draft.trips) {
     let cumulativeDistance = 0;
     const distances: number[] = [];
+    const shapeId = safeGtfsId(trip.shapeId ?? "", "") || `SHAPE_${safeGtfsId(trip.id, "TRIP")}`;
     trip.stopTimes.forEach((stopTime, index) => {
       const stopId = stopTime.stopId;
       const stop = stopById.get(stopId);
@@ -137,15 +151,20 @@ export function createGtfsArchive(draft: GtfsBuilderDraft): Buffer {
           cumulativeDistance += distanceKm(previousStop, stop);
         }
       }
-      distances.push(cumulativeDistance);
-      shapeRows.push({
-        shape_id: `SHAPE_${safeGtfsId(trip.id, "TRIP")}`,
-        shape_pt_lat: stop.lat.toFixed(6),
-        shape_pt_lon: stop.lon.toFixed(6),
-        shape_pt_sequence: index + 1,
-        shape_dist_traveled: cumulativeDistance.toFixed(3)
-      });
+      const preservedDistance = Number(stopTime.shapeDistTraveled);
+      const distance = Number.isFinite(preservedDistance) ? preservedDistance : cumulativeDistance;
+      distances.push(distance);
+      if (!generatedShapeIds.has(shapeId)) {
+        shapeRows.push({
+          shape_id: shapeId,
+          shape_pt_lat: stop.lat.toFixed(6),
+          shape_pt_lon: stop.lon.toFixed(6),
+          shape_pt_sequence: index + 1,
+          shape_dist_traveled: distance.toFixed(3)
+        });
+      }
     });
+    generatedShapeIds.add(shapeId);
     shapeDistanceByTrip.set(trip.id, distances);
   }
 
@@ -160,10 +179,10 @@ export function createGtfsArchive(draft: GtfsBuilderDraft): Buffer {
           arrival_time: stopTime.arrivalTime,
           departure_time: stopTime.departureTime,
           stop_id: safeGtfsId(stopTime.stopId, "STOP"),
-          stop_sequence: index + 1,
+          stop_sequence: stopTime.stopSequence ?? index + 1,
           pickup_type: stopTime.pickupType ?? "0",
           drop_off_type: stopTime.dropOffType ?? "0",
-          shape_dist_traveled: (distances[index] ?? 0).toFixed(3)
+          shape_dist_traveled: stopTime.shapeDistTraveled?.trim() || (distances[index] ?? 0).toFixed(3)
         }));
       })
     )
@@ -177,14 +196,16 @@ export function createGtfsArchive(draft: GtfsBuilderDraft): Buffer {
   zip.addFile(
     "feed_info.txt",
     csv(
-      ["feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_start_date", "feed_end_date", "feed_version"],
+      ["feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_start_date", "feed_end_date", "feed_version", "feed_contact_email", "feed_contact_url"],
       [{
-        feed_publisher_name: primaryAgency.name.trim(),
-        feed_publisher_url: primaryAgency.url.trim(),
-        feed_lang: primaryAgency.lang.trim() || "it",
-        feed_start_date: gtfsDate(primaryService.startDate),
-        feed_end_date: gtfsDate(primaryService.endDate),
-        feed_version: draft.updatedAt.slice(0, 10)
+        feed_publisher_name: draft.feedInfo?.publisherName.trim() || primaryAgency.name.trim(),
+        feed_publisher_url: draft.feedInfo?.publisherUrl.trim() || primaryAgency.url.trim(),
+        feed_lang: draft.feedInfo?.lang.trim() || primaryAgency.lang.trim() || "it",
+        feed_start_date: gtfsDate(draft.feedInfo?.startDate || draft.services.map((service) => service.startDate).sort()[0] || primaryService.startDate),
+        feed_end_date: gtfsDate(draft.feedInfo?.endDate || draft.services.map((service) => service.endDate).sort().at(-1) || primaryService.endDate),
+        feed_version: draft.updatedAt,
+        feed_contact_email: draft.feedInfo?.contactEmail?.trim() ?? "",
+        feed_contact_url: draft.feedInfo?.contactUrl?.trim() ?? ""
       }]
     )
   );

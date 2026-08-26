@@ -50,7 +50,8 @@ export function createEmptyGtfsDraft(): GtfsBuilderDraft {
       id: "WEEKDAY",
       startDate: dateInputValue(start),
       endDate: dateInputValue(end),
-      days: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: false, sunday: false }
+      days: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: false, sunday: false },
+      exceptions: []
     }],
     stops: [],
     routes: [],
@@ -71,14 +72,20 @@ export function upgradeGtfsDraft(value: unknown): GtfsBuilderDraft | null {
     trips?: unknown;
   };
   if (!candidate.project || !Array.isArray(candidate.stops) || !Array.isArray(candidate.routes) || !Array.isArray(candidate.trips)) return null;
-  if (candidate.version === 2 && Array.isArray(candidate.agencies) && Array.isArray(candidate.services)) return value as GtfsBuilderDraft;
+  if (candidate.version === 2 && Array.isArray(candidate.agencies) && Array.isArray(candidate.services)) {
+    const draft = value as GtfsBuilderDraft;
+    return {
+      ...draft,
+      services: draft.services.map((service) => ({ ...service, exceptions: service.exceptions ?? [] }))
+    };
+  }
   if (candidate.version !== 1) return null;
   const legacy = value as LegacyGtfsBuilderDraft;
   return {
     version: 2,
     project: { cityCode: legacy.project.cityCode, cityName: legacy.project.cityName },
     agencies: [{ id: legacy.project.agencyId, name: legacy.project.agencyName, url: legacy.project.agencyUrl, timezone: legacy.project.agencyTimezone, lang: legacy.project.agencyLang, phone: "" }],
-    services: [{ id: legacy.project.serviceId, startDate: legacy.project.serviceStartDate, endDate: legacy.project.serviceEndDate, days: legacy.project.serviceDays }],
+    services: [{ id: legacy.project.serviceId, startDate: legacy.project.serviceStartDate, endDate: legacy.project.serviceEndDate, days: legacy.project.serviceDays, exceptions: [] }],
     stops: legacy.stops,
     routes: legacy.routes.map((route) => ({ ...route, agencyId: legacy.project.agencyId })),
     trips: legacy.trips.map((trip) => ({ ...trip, serviceId: legacy.project.serviceId })),
@@ -87,7 +94,7 @@ export function upgradeGtfsDraft(value: unknown): GtfsBuilderDraft | null {
 }
 
 export function safeGtfsId(value: string, fallback: string): string {
-  return value.trim().replace(/\s+/g, "_").replace(/[^A-Za-z0-9_.:-]/g, "").slice(0, 64) || fallback;
+  return value.trim() || fallback;
 }
 
 export function normalizeHexColor(value: string, fallback: string): string {
@@ -154,7 +161,18 @@ export function validateGtfsDraft(draft: GtfsBuilderDraft): GtfsBuilderIssue[] {
     if (!id || serviceIds.has(id)) issues.push({ step: "agency", field: service.id, message: `ID servizio non valido o duplicato: ${service.id || "vuoto"}.` });
     serviceIds.add(id);
     if (!isDateInput(service.startDate) || !isDateInput(service.endDate) || service.startDate > service.endDate) issues.push({ step: "agency", field: service.id, message: `Controlla le date del servizio ${id || "senza ID"}.` });
-    if (!Object.values(service.days).some(Boolean)) issues.push({ step: "agency", field: service.id, message: `Seleziona almeno un giorno per il servizio ${id}.` });
+    const exceptions = service.exceptions ?? [];
+    if (!Object.values(service.days).some(Boolean) && !exceptions.some((exception) => exception.exceptionType === "1")) {
+      issues.push({ step: "agency", field: service.id, message: `Seleziona almeno un giorno o aggiungi una data attiva per il servizio ${id}.` });
+    }
+    const exceptionDates = new Set<string>();
+    for (const exception of exceptions) {
+      if (!isDateInput(exception.date) || exceptionDates.has(exception.date)) {
+        issues.push({ step: "agency", field: service.id, message: `Controlla le eccezioni di calendario del servizio ${id}.` });
+        break;
+      }
+      exceptionDates.add(exception.date);
+    }
   }
 
   if (draft.stops.length < 2) issues.push({ step: "stops", message: "Crea almeno due fermate sulla mappa." });

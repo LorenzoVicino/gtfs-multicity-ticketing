@@ -1,4 +1,5 @@
 import { parseGtfsArchive } from "@/lib/gtfs-builder-parser";
+import { registerGtfsWorkspace } from "@/lib/gtfs-workspace";
 
 export const runtime = "nodejs";
 
@@ -15,8 +16,10 @@ export async function POST(request: Request) {
     if (!(file instanceof File) || !file.name.toLowerCase().endsWith(".zip")) return Response.json({ error: "Seleziona un archivio GTFS .zip." }, { status: 400 });
     if (!cityCode || cityCode.length < 2 || !cityName) return Response.json({ error: "Inserisci city code e nome città prima di aprire il feed." }, { status: 400 });
     if (file.size > 60 * 1024 * 1024) return Response.json({ error: "Archivio troppo grande (massimo 60 MB)." }, { status: 413 });
-    const draft = parseGtfsArchive(Buffer.from(await file.arrayBuffer()), { cityCode, cityName });
-    return Response.json({ draft });
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const draft = parseGtfsArchive(buffer, { cityCode, cityName });
+    const sourceArchive = await registerGtfsWorkspace(buffer, file.name, draft);
+    return Response.json({ draft: { ...draft, sourceArchive } });
   } catch (error) {
     return Response.json({ error: "Impossibile aprire il GTFS nello Studio.", details: error instanceof Error ? error.message : "Errore sconosciuto" }, { status: 422 });
   }

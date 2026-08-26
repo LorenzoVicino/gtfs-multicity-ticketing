@@ -1,6 +1,14 @@
 name: gtfs-hub-production
 
 services:
+  gtfs-validator:
+    image: ghcr.io/mobilitydata/gtfs-validator-api:1.0.0-validator8.0.1@sha256:ca45acfa27a0dbf2388aa5434b5304529d2207fe3d0fde5b31a458e74b2133f7
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
   postgres:
     image: postgres:16-bookworm
     restart: unless-stopped
@@ -36,6 +44,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      gtfs-validator:
+        condition: service_started
     environment:
       PGHOST: postgres
       PGPORT: 5432
@@ -44,6 +54,9 @@ services:
       PGDATABASE: gtfs_ticketing
       TICKET_QR_SECRET: ${TICKET_QR_SECRET:?Set TICKET_QR_SECRET in deploy.env}
       GTFS_IMPORT_MODE: psql
+      GTFS_VALIDATOR_URL: http://gtfs-validator:8080/v2
+      GTFS_VALIDATOR_COUNTRY_CODE: IT
+      GTFS_VALIDATOR_TIMEOUT_MS: 180000
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     volumes:

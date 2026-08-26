@@ -19,11 +19,13 @@ import {
   validateGtfsDraft
 } from "@/lib/gtfs-builder-model";
 import type {
+  CanonicalGtfsValidation,
   GtfsBuilderAgency,
   GtfsBuilderDraft,
   GtfsBuilderIssue,
   GtfsBuilderRoute,
   GtfsBuilderService,
+  GtfsBuilderServiceException,
   GtfsBuilderStep,
   GtfsBuilderStop,
   GtfsBuilderTrip
@@ -37,8 +39,15 @@ type Props = {
   sourceLabel?: string;
 };
 
-type PublishStatus = "idle" | "building" | "importing" | "success" | "error";
+type PublishStatus = "idle" | "validating" | "building" | "importing" | "success" | "error";
 type DraftStorageStatus = "saved" | "saving" | "unavailable" | "memory";
+type RoundTripMode = "original" | "merged" | "generated";
+
+type ArchiveResponse = {
+  blob: Blob;
+  mode: RoundTripMode;
+  warnings: number;
+};
 
 const STEPS: Array<{ id: GtfsBuilderStep; number: string; label: string; description: string }> = [
   { id: "agency", number: "01", label: "Progetto", description: "Agenzia e calendario" },
@@ -193,6 +202,8 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
   const [draftReady, setDraftReady] = useState(false);
   const [publishStatus, setPublishStatus] = useState<PublishStatus>("idle");
   const [publishMessage, setPublishMessage] = useState<string | null>(null);
+  const [canonicalValidation, setCanonicalValidation] = useState<CanonicalGtfsValidation | null>(null);
+  const [roundTripMode, setRoundTripMode] = useState<RoundTripMode | null>(null);
   const [draftStorageStatus, setDraftStorageStatus] = useState<DraftStorageStatus>(initialDraft ? "memory" : "saved");
   const publishStatusRef = useRef<PublishStatus>("idle");
   const storageUnavailableRef = useRef(false);
@@ -266,12 +277,17 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
   }, [publishStatus]);
 
   useEffect(() => {
+    setCanonicalValidation(null);
+    setRoundTripMode(null);
+  }, [draft]);
+
+  useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && publishStatusRef.current !== "building" && publishStatusRef.current !== "importing") {
+      if (event.key === "Escape" && publishStatusRef.current !== "validating" && publishStatusRef.current !== "building" && publishStatusRef.current !== "importing") {
         onClose();
         return;
       }
@@ -340,7 +356,38 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
   function addService() {
     const template = draft.services[0] ?? createEmptyGtfsDraft().services[0];
     const id = nextReadableId("SERVICE", draft.services.map((service) => service.id));
-    setDraft((current) => ({ ...current, services: [...current.services, { ...template, id, days: { ...template.days } }] }));
+    setDraft((current) => ({ ...current, services: [...current.services, { ...template, id, days: { ...template.days }, exceptions: [...(template.exceptions ?? [])] }] }));
+  }
+
+  function addServiceException(serviceId: string) {
+    setDraft((current) => ({
+      ...current,
+      services: current.services.map((service) => {
+        if (service.id !== serviceId) return service;
+        const usedDates = new Set((service.exceptions ?? []).map((exception) => exception.date));
+        const date = new Date();
+        while (usedDates.has(date.toISOString().slice(0, 10))) date.setUTCDate(date.getUTCDate() + 1);
+        return { ...service, exceptions: [...(service.exceptions ?? []), { date: date.toISOString().slice(0, 10), exceptionType: "1" }] };
+      })
+    }));
+  }
+
+  function updateServiceException(serviceId: string, index: number, patch: Partial<GtfsBuilderServiceException>) {
+    setDraft((current) => ({
+      ...current,
+      services: current.services.map((service) => service.id === serviceId
+        ? { ...service, exceptions: (service.exceptions ?? []).map((exception, position) => position === index ? { ...exception, ...patch } : exception) }
+        : service)
+    }));
+  }
+
+  function deleteServiceException(serviceId: string, index: number) {
+    setDraft((current) => ({
+      ...current,
+      services: current.services.map((service) => service.id === serviceId
+        ? { ...service, exceptions: (service.exceptions ?? []).filter((_, position) => position !== index) }
+        : service)
+    }));
   }
 
   function deleteService(id: string) {
@@ -500,6 +547,7 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
     updateTrip(trip.id, {
       routeId,
       headsign: lastStop?.name ?? trip.headsign,
+      shapeId: undefined,
       stopTimes: buildStopTimes(route.stopIds, scheduleStart, scheduleInterval)
     });
   }
@@ -518,7 +566,7 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
   function regenerateTrip(trip: GtfsBuilderTrip) {
     const route = draft.routes.find((candidate) => candidate.id === trip.routeId);
     if (route) {
-      updateTrip(trip.id, { stopTimes: buildStopTimes(route.stopIds, scheduleStart, scheduleInterval) });
+      updateTrip(trip.id, { shapeId: undefined, stopTimes: buildStopTimes(route.stopIds, scheduleStart, scheduleInterval) });
     }
   }
 
@@ -554,20 +602,61 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
     }
   }
 
-  async function requestArchive(): Promise<Blob> {
+  async function requestArchive(): Promise<ArchiveResponse> {
     const response = await fetch("/api/gtfs/build", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...draft, updatedAt: new Date().toISOString() })
     });
     if (!response.ok) {
-      const result = (await response.json().catch(() => ({}))) as { error?: string; details?: string; issues?: GtfsBuilderIssue[] };
+      const result = (await response.json().catch(() => ({}))) as { error?: string; details?: string; issues?: GtfsBuilderIssue[]; canonical?: CanonicalGtfsValidation };
       if (result.issues) {
         setVisibleIssues(result.issues);
       }
+      if (result.canonical) setCanonicalValidation(result.canonical);
       throw new Error(result.details ?? result.error ?? "Creazione ZIP fallita.");
     }
-    return response.blob();
+    const mode = (response.headers.get("X-GTFS-Roundtrip-Mode") ?? "generated") as RoundTripMode;
+    const warnings = Number(response.headers.get("X-GTFS-Validation-Warnings")) || 0;
+    setRoundTripMode(mode);
+    return { blob: await response.blob(), mode, warnings };
+  }
+
+  async function validateCanonical() {
+    const issues = validateGtfsDraft(draft);
+    if (issues.length > 0) {
+      setVisibleIssues(issues);
+      setPublishStatus("error");
+      setPublishMessage("Correggi i punti indicati prima della validazione canonica.");
+      return;
+    }
+    try {
+      setPublishStatus("validating");
+      setPublishMessage("MobilityData sta controllando l’archivio completo...");
+      const response = await fetch("/api/gtfs/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...draft, updatedAt: new Date().toISOString() })
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        details?: string;
+        issues?: GtfsBuilderIssue[];
+        validation?: CanonicalGtfsValidation;
+        roundTrip?: { mode?: RoundTripMode };
+      };
+      if (result.issues) setVisibleIssues(result.issues);
+      if (!response.ok || !result.validation) throw new Error(result.details ?? result.error ?? "Validazione GTFS fallita.");
+      setCanonicalValidation(result.validation);
+      setRoundTripMode(result.roundTrip?.mode ?? null);
+      setPublishStatus(result.validation.valid ? "success" : "error");
+      setPublishMessage(result.validation.valid
+        ? `Validazione MobilityData superata: ${result.validation.warnings} warning, nessun errore.`
+        : `Validazione bloccata: ${result.validation.errors} errori da correggere.`);
+    } catch (error) {
+      setPublishStatus("error");
+      setPublishMessage(error instanceof Error ? error.message : "Validazione GTFS fallita.");
+    }
   }
 
   async function downloadArchive() {
@@ -581,8 +670,8 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
     try {
       setPublishStatus("building");
       setPublishMessage("Sto creando i file GTFS...");
-      const blob = await requestArchive();
-      const href = URL.createObjectURL(blob);
+      const archive = await requestArchive();
+      const href = URL.createObjectURL(archive.blob);
       const anchor = document.createElement("a");
       anchor.href = href;
       anchor.download = `${safeGtfsId(draft.project.cityCode.toUpperCase(), "GTFS")}_gtfs.zip`;
@@ -591,7 +680,7 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
       anchor.remove();
       URL.revokeObjectURL(href);
       setPublishStatus("success");
-      setPublishMessage("Archivio GTFS creato e scaricato.");
+      setPublishMessage(`Archivio GTFS scaricato (${archive.mode === "original" ? "originale invariato" : archive.mode === "merged" ? "modifiche fuse senza scartare file" : "generato da zero"}); ${archive.warnings} warning.`);
     } catch (error) {
       setPublishStatus("error");
       setPublishMessage(error instanceof Error ? error.message : "Creazione ZIP fallita.");
@@ -609,9 +698,9 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
     try {
       setPublishStatus("building");
       setPublishMessage("Genero l’archivio GTFS...");
-      const blob = await requestArchive();
+      const archive = await requestArchive();
       const formData = new FormData();
-      formData.append("file", new File([blob], `${draft.project.cityCode}_gtfs.zip`, { type: "application/zip" }));
+      formData.append("file", new File([archive.blob], `${draft.project.cityCode}_gtfs.zip`, { type: "application/zip" }));
       formData.append("cityCode", draft.project.cityCode.toUpperCase());
       formData.append("cityName", draft.project.cityName.trim());
       setPublishStatus("importing");
@@ -721,6 +810,19 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
                   <label className="builder-field"><span>Al *</span><input type="date" value={service.endDate} onChange={(event) => updateService(service.id, { endDate: event.target.value })} /></label>
                 </div>
                 <fieldset className="builder-days"><legend>Giorni attivi *</legend><div className="builder-day-grid">{GTFS_WEEKDAYS.map((day) => <label key={day.key} className={service.days[day.key] ? "builder-day builder-day-active" : "builder-day"}><input type="checkbox" checked={service.days[day.key]} onChange={(event) => updateService(service.id, { days: { ...service.days, [day.key]: event.target.checked } })} /><span aria-hidden="true">{day.short}</span><span className="sr-only">{day.label}</span></label>)}</div></fieldset>
+                <div className="builder-exceptions">
+                  <div className="builder-exceptions-heading"><div><strong>Eccezioni calendario</strong><small>Aggiunte e rimozioni di servizio in calendar_dates.txt.</small></div><button type="button" onClick={() => addServiceException(service.id)}>＋ Data</button></div>
+                  {(service.exceptions ?? []).length === 0 ? <p>Nessuna eccezione.</p> : (service.exceptions ?? []).map((exception, exceptionIndex) => (
+                    <div className="builder-exception-row" key={`${exception.date}-${exceptionIndex}`}>
+                      <input aria-label={`Data eccezione ${service.id}`} type="date" value={exception.date} onChange={(event) => updateServiceException(service.id, exceptionIndex, { date: event.target.value })} />
+                      <select aria-label={`Tipo eccezione ${service.id}`} value={exception.exceptionType} onChange={(event) => updateServiceException(service.id, exceptionIndex, { exceptionType: event.target.value as "1" | "2" })}>
+                        <option value="1">Servizio aggiunto</option>
+                        <option value="2">Servizio rimosso</option>
+                      </select>
+                      <button type="button" aria-label={`Elimina eccezione ${exception.date}`} onClick={() => deleteServiceException(service.id, exceptionIndex)}>×</button>
+                    </div>
+                  ))}
+                </div>
                 <FieldError issues={visibleIssues} field={service.id} />
               </div>
             ))}
@@ -855,6 +957,9 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
 
   function renderPublishStep() {
     const stepSummaries = STEPS.slice(0, 4).map((step) => ({ ...step, issues: issuesForStep(allIssues, step.id) }));
+    const sourceFiles = draft.sourceArchive?.files ?? [];
+    const unmanagedFiles = sourceFiles.filter((file) => !file.managed);
+    const publishBusy = publishStatus === "validating" || publishStatus === "building" || publishStatus === "importing";
     return (
       <div className="builder-publish-page">
         <div className="builder-page-heading"><span className="builder-eyebrow">Ultimo controllo</span><h2>Il tuo GTFS, pronto a viaggiare</h2><p>Scarica un archivio standard indipendente oppure importalo direttamente nel GTFS Hub.</p></div>
@@ -863,12 +968,43 @@ export function GtfsBuilder({ onClose, onImported, initialDraft, mode = "create"
           <div className="builder-section-heading"><span className={allIssues.length === 0 ? "builder-ready-mark" : "builder-warning-mark"}>{allIssues.length === 0 ? "✓" : "!"}</span><div><h3>{allIssues.length === 0 ? "Feed completo" : `${allIssues.length} punti da completare`}</h3><p>{allIssues.length === 0 ? "I file obbligatori sono coerenti e possono essere generati." : "Apri le sezioni indicate e correggi i campi mancanti."}</p></div></div>
           <div className="builder-check-list">{stepSummaries.map((step) => <button key={step.id} type="button" onClick={() => selectStep(step.id)} className={step.issues.length === 0 ? "builder-check builder-check-ok" : "builder-check builder-check-error"}><span>{step.issues.length === 0 ? "✓" : step.issues.length}</span><strong>{step.label}</strong><small>{step.issues.length === 0 ? "Completo" : step.issues[0].message}</small></button>)}</div>
         </section>
+        <section className={draft.sourceArchive ? "builder-lossless-card builder-lossless-card-protected" : "builder-lossless-card"}>
+          <div className="builder-lossless-mark">{draft.sourceArchive ? "◎" : "+"}</div>
+          <div>
+            <span className="builder-export-kicker">Round-trip</span>
+            <h3>{draft.sourceArchive ? "Archivio sorgente protetto" : mode === "edit" ? "Sorgente completa non disponibile" : "Nuovo feed"}</h3>
+            <p>{draft.sourceArchive
+              ? `${draft.sourceArchive.fileName}: ${sourceFiles.length} file registrati. ${unmanagedFiles.length} file non modificati dallo Studio saranno copiati byte per byte.`
+              : mode === "edit"
+                ? "Questa città proviene dalla proiezione nel database: l’export è valido, ma non può promettere di conservare campi e file assenti dal database."
+                : "Non esiste un archivio precedente: lo Studio genererà tutti i file del feed."}</p>
+            {draft.sourceArchive ? <small>SHA-256 sorgente: {draft.sourceArchive.sha256.slice(0, 16)}… · sessione server 24h</small> : null}
+            {roundTripMode ? <strong className="builder-roundtrip-mode">Ultimo build: {roundTripMode === "original" ? "ZIP originale invariato" : roundTripMode === "merged" ? "merge conservativo" : "generazione completa"}</strong> : null}
+          </div>
+        </section>
+        <section className="builder-validator-card">
+          <div className="builder-validator-heading">
+            <div><span className="builder-export-kicker">Controllo canonico</span><h3>MobilityData GTFS Validator</h3><p>È il gate reale usato anche durante download e importazione: gli errori bloccano, warning e info restano visibili.</p></div>
+            <button type="button" disabled={allIssues.length > 0 || publishBusy} onClick={() => void validateCanonical()}>{publishStatus === "validating" ? "Validazione..." : "Valida adesso"}</button>
+          </div>
+          {canonicalValidation ? (
+            <div className="builder-validator-result">
+              <div className={canonicalValidation.valid ? "builder-validator-verdict builder-validator-ok" : "builder-validator-verdict builder-validator-error"}>
+                <strong>{canonicalValidation.valid ? "VALIDO" : "NON VALIDO"}</strong>
+                <span>{canonicalValidation.errors} errori</span><span>{canonicalValidation.warnings} warning</span><span>{canonicalValidation.infos} info</span>
+              </div>
+              <small>{canonicalValidation.validatorVersion}</small>
+              {canonicalValidation.notices.length > 0 ? <div className="builder-validator-notices">{canonicalValidation.notices.slice(0, 12).map((notice) => <div key={`${notice.severity}-${notice.code}`}><span className={`builder-notice-severity builder-notice-${notice.severity.toLowerCase()}`}>{notice.severity}</span><code>{notice.code}</code><strong>{notice.totalNotices}</strong></div>)}</div> : <p>Nessuna segnalazione.</p>}
+              {canonicalValidation.notices.length > 12 ? <small>Mostrate 12 categorie su {canonicalValidation.notices.length}.</small> : null}
+            </div>
+          ) : <p className="builder-validator-empty">Nessun report per questa versione della bozza.</p>}
+        </section>
         <div className="builder-export-grid">
-          <section className="builder-export-card"><span className="builder-export-kicker">Portabile</span><h3>Scarica ZIP GTFS</h3><p>Ottieni agency, stops, routes, calendar, trips, stop_times, shapes e feed_info. Il download non richiede PostgreSQL.</p><button type="button" className="builder-export-button builder-export-button-secondary" disabled={allIssues.length > 0 || publishStatus === "building" || publishStatus === "importing"} onClick={() => void downloadArchive()}>Scarica archivio .zip</button></section>
-          <section className="builder-export-card builder-export-card-primary"><span className="builder-export-kicker">GTFS Hub</span><h3>{mode === "edit" ? "Aggiorna la città" : "Crea e apri la città"}</h3><p>Genera lo ZIP, sincronizza il database locale e apre subito la rete aggiornata sulla mappa.</p><button type="button" className="builder-export-button" disabled={allIssues.length > 0 || publishStatus === "building" || publishStatus === "importing"} onClick={() => void importArchive()}>{publishStatus === "importing" ? "Importazione..." : mode === "edit" ? "Salva modifiche nel Hub" : "Importa nel GTFS Hub"}</button></section>
+          <section className="builder-export-card"><span className="builder-export-kicker">Portabile</span><h3>Scarica ZIP GTFS</h3><p>Il server esegue prima il validatore canonico. Se stai modificando un ZIP, conserva file e colonne che lo Studio non gestisce.</p><button type="button" className="builder-export-button builder-export-button-secondary" disabled={allIssues.length > 0 || publishBusy} onClick={() => void downloadArchive()}>Scarica archivio .zip</button></section>
+          <section className="builder-export-card builder-export-card-primary"><span className="builder-export-kicker">GTFS Hub</span><h3>{mode === "edit" ? "Aggiorna la città" : "Crea e apri la città"}</h3><p>Valida lo ZIP, sincronizza il database locale e conserva l’archivio canonico per le modifiche future.</p><button type="button" className="builder-export-button" disabled={allIssues.length > 0 || publishBusy} onClick={() => void importArchive()}>{publishStatus === "importing" ? "Importazione..." : mode === "edit" ? "Salva modifiche nel Hub" : "Importa nel GTFS Hub"}</button></section>
         </div>
         {publishMessage ? <div className={`builder-publish-message builder-publish-message-${publishStatus}`} role={publishStatus === "error" ? "alert" : "status"}>{publishMessage}</div> : null}
-        <div className="builder-file-manifest"><strong>Contenuto dell’archivio</strong><span>agency.txt</span><span>stops.txt</span><span>routes.txt</span><span>calendar.txt</span><span>trips.txt</span><span>stop_times.txt</span><span>shapes.txt</span><span>feed_info.txt</span></div>
+        <div className="builder-file-manifest"><strong>{sourceFiles.length > 0 ? `Manifest sorgente (${sourceFiles.length})` : "Contenuto generato"}</strong>{sourceFiles.length > 0 ? sourceFiles.map((file) => <span key={file.name} title={file.managed ? "Gestito con merge conservativo" : "Preservato byte per byte"}>{file.name}{file.managed ? "" : " · intatto"}</span>) : <><span>agency.txt</span><span>stops.txt</span><span>routes.txt</span><span>calendar.txt</span><span>calendar_dates.txt</span><span>trips.txt</span><span>stop_times.txt</span><span>shapes.txt</span><span>feed_info.txt</span></>}</div>
       </div>
     );
   }

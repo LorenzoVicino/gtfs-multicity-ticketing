@@ -1,18 +1,18 @@
-# Deploy self-hosted
+# Self-hosted deployment
 
-Il deploy supportato non usa Vercel né Supabase. L’app Next.js e PostgreSQL vengono eseguiti con Docker Compose; il database non espone porte pubbliche e l’app ascolta solo su `127.0.0.1` per essere pubblicata tramite un reverse proxy TLS.
+The supported deployment does not use Vercel or Supabase. Docker Compose runs the Next.js application, PostgreSQL, and the official MobilityData validator. The database and validator stay on an internal network, while the application binds only to `127.0.0.1` so it can be published through a TLS-enabled reverse proxy.
 
-`vercel.json` disattiva esplicitamente tutti i deploy Git automatici dell’eventuale progetto Vercel storico. Può essere rimosso dopo aver scollegato il repository da **Vercel → Project Settings → Git → Disconnect**.
+`vercel.json` explicitly disables automatic Git deployments for any legacy Vercel project. You may remove it after disconnecting the repository under **Vercel → Project Settings → Git → Disconnect**.
 
-## Preparazione
+## Preparation
 
 ```bash
 cp deploy.env.example deploy.env
 ```
 
-Imposta in `deploy.env` password casuali e un `TICKET_QR_SECRET` di almeno 32 caratteri. Il file è ignorato da Git.
+Set a random database password and a `TICKET_QR_SECRET` of at least 32 characters in `deploy.env`. Git ignores this file.
 
-## Avvio
+## Start
 
 ```bash
 npm run deploy:local
@@ -20,28 +20,31 @@ docker compose --env-file deploy.env -f compose.production.yml ps
 curl http://127.0.0.1:3000/api/health
 ```
 
-Per arrestare i container senza eliminare i volumi:
+To stop the containers without deleting their volumes:
 
 ```bash
 npm run deploy:down
 ```
 
-## Aggiornamento
+## Update
 
 ```bash
 git pull --ff-only
 npm run deploy:local
 ```
 
-Esegui un backup PostgreSQL prima di ogni aggiornamento che modifica `db/`.
+Create a PostgreSQL backup before every update that changes files under `db/`.
 
-## Perimetro di sicurezza
+## Security boundary
 
-- il processo Next.js gira come utente non-root;
-- i container usano `no-new-privileges`;
-- PostgreSQL è raggiungibile solo dalla rete Docker interna;
-- l’import GTFS usa `psql` direttamente, senza montare il socket Docker nell’app;
-- `deploy.env` non è versionato;
-- GitHub Actions esegue build e controlli, ma non possiede credenziali di deploy.
+- The Next.js process runs as a non-root user.
+- Containers use `no-new-privileges`.
+- PostgreSQL is available only on the internal Docker network.
+- MobilityData GTFS Validator is pinned to API release `1.0.0-validator8.0.1` and an image digest; only the application can reach it on the internal network.
+- GTFS imports call `psql` directly without mounting the Docker socket into the application.
+- Downloads and imports fail when the validator is unavailable or reports blocking errors.
+- Published canonical ZIP files and lossless workspaces live in the `gtfs_uploads` volume; include it in your backup strategy.
+- `deploy.env` is not version-controlled.
+- GitHub Actions runs builds and checks without deployment credentials.
 
-Il reverse proxy e i certificati TLS dipendono dall’host scelto e non sono inclusi. Non pubblicare direttamente la porta 3000 su Internet.
+The reverse proxy and TLS certificates depend on the selected host and are not included. Do not expose port 3000 directly to the Internet.

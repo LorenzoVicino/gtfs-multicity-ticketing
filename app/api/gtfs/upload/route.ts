@@ -2,6 +2,10 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { importGtfsZip } from "@/lib/gtfs-upload";
+import { GtfsValidatorUnavailableError, validateGtfsArchiveCanonical } from "@/lib/gtfs-validator";
+import { savePublishedGtfsSource } from "@/lib/gtfs-workspace";
+
+export const runtime = "nodejs";
 
 function sanitizeCode(value: string): string {
   return value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 16);
@@ -26,6 +30,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Formato non supportato. Usa un file .zip" }, { status: 400 });
     }
 
+    if (file.size > 60 * 1024 * 1024) {
+      return NextResponse.json({ error: "Archivio troppo grande (massimo 60 MB)." }, { status: 413 });
+    }
+
     const cityCode = sanitizeCode(cityCodeRaw);
     const cityName = sanitizeName(cityNameRaw || cityCodeRaw);
 
@@ -43,6 +51,13 @@ export async function POST(request: Request) {
     const stamp = Date.now();
     const zipPath = path.join(uploadsRoot, `${cityCode}_${stamp}.zip`);
     const buffer = Buffer.from(await file.arrayBuffer());
+    const canonical = await validateGtfsArchiveCanonical(buffer, file.name);
+    if (!canonical.valid) {
+      return NextResponse.json({
+        error: "Il validatore ufficiale MobilityData ha trovato errori bloccanti.",
+        canonical
+      }, { status: 422 });
+    }
     await fs.writeFile(zipPath, buffer);
 
     const serviceDate = new Date().toISOString().slice(0, 10);
@@ -52,15 +67,17 @@ export async function POST(request: Request) {
       cityName,
       serviceDate
     });
+    await savePublishedGtfsSource(cityCode, buffer);
 
     return NextResponse.json({ ok: true, cityCode, cityName });
   } catch (error) {
+    const validatorUnavailable = error instanceof GtfsValidatorUnavailableError;
     return NextResponse.json(
       {
-        error: "Import GTFS fallito",
+        error: validatorUnavailable ? "Validazione canonica non disponibile" : "Import GTFS fallito",
         details: error instanceof Error ? error.message : "Errore sconosciuto"
       },
-      { status: 500 }
+      { status: validatorUnavailable ? 503 : 500 }
     );
   }
 }

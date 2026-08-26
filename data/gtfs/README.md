@@ -1,19 +1,19 @@
-# Cartelle GTFS
+# GTFS directories
 
-Struttura consigliata per i feed GTFS:
+Recommended layout for GTFS feeds:
 
 ```text
 data/gtfs/
   raw/
     MIL/
-      feed.zip oppure file .txt estratti
+      feed.zip or extracted .txt files
     ROM/
-      feed.zip oppure file .txt estratti
+      feed.zip or extracted .txt files
   incoming/
-    # cartella di lavoro temporanea per estrazioni/fallback
+    # Temporary workspace for extraction and fallback files
 ```
 
-## File richiesti nel feed
+## Required feed files
 
 - `agency.txt`
 - `routes.txt`
@@ -21,19 +21,18 @@ data/gtfs/
 - `trips.txt`
 - `stop_times.txt`
 
-## File opzionali gestiti
+## Supported optional files
 
-- `calendar.txt` (se assente viene creato fallback vuoto)
-- `fare_attributes.txt` (se assente viene creato fallback vuoto)
+- `calendar.txt` (an empty fallback is created when missing)
+- `fare_attributes.txt` (an empty fallback is created when missing)
 
-## Esempio
+## Example
 
 ```powershell
 .\scripts\import_gtfs.ps1 `
   -CityCode MIL `
-  -CityName "Milano" `
+  -CityName "Milan" `
   -FeedPath ".\data\gtfs\raw\MIL\feed.zip" `
   -ServiceDate 2026-02-18 `
   -DbName gtfs_ticketing
 ```
-

@@ -1,22 +1,22 @@
 # Security policy
 
-## Versioni supportate
+## Supported versions
 
-La linea supportata è la release stabile più recente. Le versioni precedenti sono materiale storico e non ricevono correzioni di sicurezza.
+Only the latest stable release is supported. Earlier versions are retained for historical reference and do not receive security fixes.
 
-## Segnalare una vulnerabilità
+## Reporting a vulnerability
 
-Non aprire issue pubbliche con dettagli sfruttabili, credenziali, token o dati personali. Usa la funzione **Report a vulnerability** nella scheda Security del repository GitHub.
+Do not open a public issue containing exploitable details, credentials, tokens, or personal data. Use **Report a vulnerability** in the repository's GitHub Security tab.
 
-Indica, quando possibile:
+When possible, include:
 
-- componente e versione coinvolti;
-- passaggi minimi per riprodurre il problema;
-- impatto osservato o potenziale;
-- proposta di mitigazione.
+- the affected component and version;
+- the minimum steps needed to reproduce the issue;
+- the observed or potential impact;
+- a proposed mitigation.
 
-Il maintainer confermerà la ricezione e coordinerà correzione e pubblicazione. Nessun segreto di produzione deve essere committato: `.env.local` e `deploy.env` restano esclusi da Git.
+The maintainer will acknowledge the report and coordinate the fix and disclosure. Production secrets must never be committed: `.env.local` and `deploy.env` remain excluded from Git.
 
-## Confini del progetto
+## Project boundary
 
-GTFS Hub è un progetto dimostrativo self-hosted. Prima di un uso pubblico reale servono almeno TLS tramite reverse proxy, backup PostgreSQL, rotazione dei segreti, monitoraggio e un servizio di autenticazione/autorizzazione adeguato.
+GTFS Hub is a self-hosted demonstration project. Real public use requires, at minimum, TLS through a reverse proxy, PostgreSQL backups, secret rotation, monitoring, and an appropriate authentication and authorization service.
