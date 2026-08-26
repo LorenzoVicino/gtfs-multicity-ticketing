@@ -11,16 +11,18 @@ const args = new Set(process.argv.slice(2));
 const skipInstall = args.has("--skip-install");
 const setupOnly = args.has("--setup-only");
 
+const WINDOWS_SHIMMED_COMMANDS = new Set(["npm", "npx"]);
+
 function resolveCommand(command) {
-  if (process.platform === "win32" && command === "npm") {
-    return "npm.cmd";
+  if (process.platform === "win32" && WINDOWS_SHIMMED_COMMANDS.has(command)) {
+    return `${command}.cmd`;
   }
 
   return command;
 }
 
 function resolveSpawnOptions(command, baseOptions = {}) {
-  if (process.platform === "win32" && command === "npm") {
+  if (process.platform === "win32" && WINDOWS_SHIMMED_COMMANDS.has(command)) {
     return {
       ...baseOptions,
       shell: true
@@ -184,7 +186,7 @@ async function main() {
   }
 
   console.log("Checking additional bundled datasets...");
-  await run("node", ["scripts/import-bundled-gtfs.mjs"], {
+  await run("npx", ["tsx", "scripts/import-bundled-gtfs.ts"], {
     env: withNodeHeapSize(process.env, 4096)
   });
 

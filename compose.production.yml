@@ -53,6 +53,7 @@ services:
       GTFS_VALIDATOR_URL: http://gtfs-validator:8080/v2
       GTFS_VALIDATOR_COUNTRY_CODE: IT
       GTFS_VALIDATOR_TIMEOUT_MS: 180000
+      GTFS_MAX_UNCOMPRESSED_MB: 400
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     volumes:

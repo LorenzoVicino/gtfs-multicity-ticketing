@@ -80,6 +80,7 @@ GTFS_IMPORT_MODE=docker
 GTFS_VALIDATOR_URL=http://127.0.0.1:8080/v2
 GTFS_VALIDATOR_COUNTRY_CODE=IT
 GTFS_VALIDATOR_TIMEOUT_MS=180000
+GTFS_MAX_UNCOMPRESSED_MB=400
 ```
 
 Do not use the example credentials in a public environment.
@@ -100,7 +101,7 @@ Do not use the example credentials in a public environment.
 - From a ZIP: enter a city code and name, then select **Open and edit GTFS**.
 - From the database: open a city and select **Edit GTFS**.
 
-GTFS Studio preserves multiple `agency_id` and `service_id` values, `calendar_dates.txt`, `shape_id` references, shape distances, trip-specific patterns, and the primary optional fields. Oversized feeds are rejected before full decompression with an explicit error.
+GTFS Studio preserves multiple `agency_id` and `service_id` values, `calendar_dates.txt`, `shape_id` references, shape distances, trip-specific patterns, and the primary optional fields. Oversized feeds are rejected before full decompression with an explicit error: an archive is measured extracted, not compressed, and refused above `GTFS_MAX_UNCOMPRESSED_MB` (400 MB by default — the bundled Cagliari sample alone is 128 MB extracted). Working copies are removed when an import finishes, and a copy an interrupted run left behind is swept on the next one.
 
 For feeds opened from a ZIP, Studio keeps the source archive on the server for 24 hours. If the draft is unchanged, the exported file is byte-identical to the original. If it changes, managed tables are merged by key while unknown columns are preserved; files such as `transfers.txt`, `pathways.txt`, and private extensions remain byte-identical. After importing into the Hub, the canonical snapshot is stored in the `gtfs_uploads` volume and reused for future edits. If that snapshot is missing, the UI explicitly identifies the export as a database reconstruction rather than a lossless transformation.
 
