@@ -1,8 +1,8 @@
 # GTFS Hub
 
-A full-stack application for exploring, creating, editing, and publishing **multi-city GTFS feeds**, with a digital ticketing demo and QR validation.
+A full-stack application for exploring, creating, editing, validating, and publishing **multi-city GTFS feeds**.
 
-The repository began as a university project about designing a PostgreSQL database for GTFS data. It has since grown into a more complete application with an interactive map, GTFS Studio, feed import and synchronization, routes and timetables, agency-specific tickets, and a reproducible self-hosted deployment.
+The repository began as a university project about designing a PostgreSQL database for GTFS data. It has since grown into a more complete application with an interactive map, GTFS Studio, feed import and synchronization, routes and timetables, and a reproducible self-hosted deployment.
 
 ## Features
 
@@ -15,8 +15,7 @@ The repository began as a university project about designing a PostgreSQL databa
 - Edit a city that has already been imported into the Hub.
 - Support multiple agencies, calendars, routes, trip patterns, and times beyond 24:00.
 - Export a standard GTFS ZIP archive.
-- Safely synchronize a feed with PostgreSQL without deleting historical references used by itineraries or tickets.
-- Demonstrate ticket purchases, a wallet, signed QR codes, and ticket validation.
+- Safely synchronize a feed with PostgreSQL by deactivating rows that disappear instead of deleting them.
 - Rotate responsive home-page photography while respecting `prefers-reduced-motion`.
 
 ## Architecture
@@ -25,7 +24,7 @@ The repository began as a university project about designing a PostgreSQL databa
 |---|---|---|
 | Web | Next.js 16, React 19, TypeScript | UI, GTFS Studio, and Route Handlers |
 | Map | Leaflet, React Leaflet, OpenStreetMap | Stops, routes, and geographic selection |
-| Data | PostgreSQL 16, relational SQL | GTFS, ticketing, itineraries, and historical constraints |
+| Data | PostgreSQL 16, relational SQL | GTFS entities, timetables, and referential constraints |
 | Import/export | AdmZip, csv-parse, csv-stringify, `psql` | Parsing, conservative merging, ZIP creation, and synchronization |
 | Validation | MobilityData GTFS Validator 8.0.1 | Canonical reports and export/import gate |
 | Deployment | Docker, Docker Compose | Standalone application and self-hosted database |
@@ -75,14 +74,13 @@ Local variables are documented in `.env.example`:
 
 ```env
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/gtfs_ticketing
-TICKET_QR_SECRET=change-me-with-a-long-random-secret
 GTFS_IMPORT_MODE=docker
 GTFS_VALIDATOR_URL=http://127.0.0.1:8080/v2
 GTFS_VALIDATOR_COUNTRY_CODE=IT
 GTFS_VALIDATOR_TIMEOUT_MS=180000
 ```
 
-Do not use the example secrets in a public environment.
+Do not use the example credentials in a public environment.
 
 ## GTFS Studio
 
@@ -106,7 +104,7 @@ For feeds opened from a ZIP, Studio keeps the source archive on the server for 2
 
 Every download and import passes through the official MobilityData validator. `ERROR` notices block the operation, while `WARNING` and `INFO` notices remain visible without blocking it. If the validator is unavailable, the request fails with `503` instead of silently skipping validation.
 
-When you save to the Hub, the uploaded feed becomes the current snapshot: missing routes, stops, agencies, and fares are deactivated, and timetables are rebuilt. Historical rows remain available so existing tickets and itineraries stay valid.
+When you save to the Hub, the uploaded feed becomes the current snapshot: missing routes, stops, agencies, and fares are deactivated, and timetables are rebuilt. Historical rows remain in the database instead of being deleted, so references from earlier imports stay resolvable.
 
 ## Main API endpoints
 
@@ -120,10 +118,6 @@ When you save to the Hub, the uploaded feed becomes the current snapshot: missin
 | `POST` | `/api/gtfs/build` | Validate a draft and generate its ZIP archive |
 | `POST` | `/api/gtfs/validate` | Run canonical validation and return its report |
 | `POST` | `/api/gtfs/upload` | Synchronize a ZIP archive with the database |
-| `GET` | `/api/cities/{code}/tickets` | Return the agency-specific ticket catalog |
-| `POST` | `/api/tickets/purchase` | Create a demonstration purchase |
-| `POST` | `/api/tickets/validate` | Validate a QR code or ticket code |
-| `GET` | `/api/bookings?email=...` | Return the wallet and booking history |
 | `GET` | `/api/stops/departures` | Return upcoming departures from a stop |
 
 ## Quality checks
@@ -142,7 +136,7 @@ The supported deployment uses `Dockerfile` and `compose.production.yml`:
 
 ```bash
 cp deploy.env.example deploy.env
-# Replace the example values with random secrets.
+# Replace the example password with a strong random value.
 npm run deploy:local
 curl http://127.0.0.1:3000/api/health
 ```
@@ -151,7 +145,7 @@ PostgreSQL and the validator do not expose public ports. The application binds t
 
 ## Database and GTFS data
 
-The main database scripts live in `db/`. In development, Docker Compose initializes the schema, demo feeds, ticketing tables, and indexes on an empty volume. Scripts in `/docker-entrypoint-initdb.d` do not run again on an existing volume.
+The main database scripts live in `db/`. In development, Docker Compose initializes the schema, demo feeds, and indexes on an empty volume. Scripts in `/docker-entrypoint-initdb.d` do not run again on an existing volume.
 
 To completely reset the development environment, including its local database volume:
 
@@ -171,14 +165,14 @@ The bundled datasets make the demo reproducible. Before adding another feed, ver
 - The production application runs as a non-root user and does not mount the Docker socket.
 - Sensitive reports follow [SECURITY.md](SECURITY.md).
 
-This remains a demonstration project. Real payments or personal data require authentication, authorization, auditing, backups, TLS, and a compliant payment provider.
+This remains a demonstration project. The feed upload, build, and validation endpoints are not yet protected by administrative authentication or rate limiting, so a public deployment requires authentication, authorization, auditing, backups, and TLS.
 
 ## Repository layout
 
 ```text
 app/                     Next.js pages and API routes
-components/              Map, GTFS Studio, wallet, and ticket UI
-db/                      Schema, import, ticketing, and indexes
+components/              Map and GTFS Studio UI
+db/                      Schema, import, and indexes
 data/gtfs/               Reproducible feeds and supporting files
 docs/                    Operational documentation
 lib/                     Database, GTFS, ZIP, parsing, and services

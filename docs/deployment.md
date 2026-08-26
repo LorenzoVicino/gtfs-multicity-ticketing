@@ -10,7 +10,7 @@ The supported deployment does not use Vercel or Supabase. Docker Compose runs th
 cp deploy.env.example deploy.env
 ```
 
-Set a random database password and a `TICKET_QR_SECRET` of at least 32 characters in `deploy.env`. Git ignores this file.
+Set a random database password in `deploy.env`. Git ignores this file.
 
 ## Start
 

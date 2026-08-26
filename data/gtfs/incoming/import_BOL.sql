@@ -343,13 +343,12 @@ DO UPDATE SET
     shape_dist_traveled = EXCLUDED.shape_dist_traveled;
 
 INSERT INTO fare (
-    city_id, agency_id, gtfs_fare_id, fare_name, currency_code, price, payment_method, transfers, transfer_duration_sec, validity_minutes
+    city_id, agency_id, gtfs_fare_id, currency_code, price, payment_method, transfers, transfer_duration_sec
 )
 SELECT
     ctx.city_id,
     ag.agency_id,
     NULLIF(f.fare_id, ''),
-    'GTFS Fare ' || NULLIF(f.fare_id, ''),
     COALESCE(NULLIF(f.currency_type, ''), 'EUR'),
     NULLIF(f.price, '')::NUMERIC(10, 2),
     COALESCE(NULLIF(f.payment_method, ''), '0')::SMALLINT,
@@ -360,8 +359,7 @@ SELECT
     CASE
         WHEN NULLIF(f.transfer_duration, '') ~ '^\d+$' THEN NULLIF(f.transfer_duration, '')::INTEGER
         ELSE NULL
-    END,
-    90
+    END
 FROM gtfs_fares_raw f
 CROSS JOIN gtfs_import_ctx ctx
 JOIN LATERAL (
@@ -376,7 +374,6 @@ WHERE NULLIF(f.fare_id, '') IS NOT NULL
 ON CONFLICT (city_id, gtfs_fare_id)
 DO UPDATE SET
     agency_id = EXCLUDED.agency_id,
-    fare_name = EXCLUDED.fare_name,
     currency_code = EXCLUDED.currency_code,
     price = EXCLUDED.price,
     payment_method = EXCLUDED.payment_method,
