@@ -1,14 +1,6 @@
 SET search_path TO transport, public;
 
 TRUNCATE TABLE
-    validation,
-    payment,
-    ticket,
-    itinerary_segment,
-    itinerary,
-    booking,
-    passenger,
-    customer,
     stop_time,
     trip,
     fare,
@@ -74,64 +66,11 @@ VALUES
     (3, 2, 2, 6, INTERVAL '09:07:00', INTERVAL '09:07:00', 0, 0, 2.200);
 
 INSERT INTO fare (
-    fare_id, city_id, agency_id, gtfs_fare_id, fare_name, currency_code, price, payment_method, transfers, transfer_duration_sec, validity_minutes
+    fare_id, city_id, agency_id, gtfs_fare_id, currency_code, price, payment_method, transfers, transfer_duration_sec
 )
 VALUES
-    (1, 1, 1, 'MIL_URB_90', 'Biglietto urbano 90 minuti', 'EUR', 2.20, 0, -1, 5400, 90),
-    (2, 2, 2, 'ROM_BIT_100', 'BIT 100 minuti', 'EUR', 1.50, 0, -1, 6000, 100);
-
-INSERT INTO customer (customer_id, email, full_name, phone, password_hash, status)
-VALUES
-    (1, 'mario.rossi@example.com', 'Mario Rossi', '+39-3331234567', 'hash_demo_1', 'active'),
-    (2, 'anna.verdi@example.com', 'Anna Verdi', '+39-3349876543', 'hash_demo_2', 'active');
-
-INSERT INTO passenger (passenger_id, customer_id, first_name, last_name, birth_date, document_id, reduced_fare_eligible)
-VALUES
-    (1, 1, 'Mario', 'Rossi', DATE '1995-04-11', 'CI-MR-001', FALSE),
-    (2, 2, 'Anna', 'Verdi', DATE '1998-11-03', 'CI-AV-002', TRUE);
-
-INSERT INTO booking (
-    booking_id, city_id, customer_id, booking_code, booked_at, travel_date, status, total_amount, currency_code, notes
-)
-VALUES
-    (1, 1, 1, 'BK-20260217-0001', TIMESTAMPTZ '2026-02-17 10:15:00+01', DATE '2026-02-18', 'confirmed', 2.20, 'EUR', 'Viaggio con cambio'),
-    (2, 2, 2, 'BK-20260217-0002', TIMESTAMPTZ '2026-02-17 11:40:00+01', DATE '2026-02-18', 'confirmed', 1.50, 'EUR', 'Viaggio diretto');
-
-INSERT INTO itinerary (
-    itinerary_id, booking_id, city_id, origin_stop_id, destination_stop_id, departure_ts, arrival_ts, transfers_count, status
-)
-VALUES
-    (1, 1, 1, 1, 4, TIMESTAMPTZ '2026-02-18 08:00:00+01', TIMESTAMPTZ '2026-02-18 08:40:00+01', 1, 'ticketed'),
-    (2, 2, 2, 5, 6, TIMESTAMPTZ '2026-02-18 09:00:00+01', TIMESTAMPTZ '2026-02-18 09:07:00+01', 0, 'ticketed');
-
-INSERT INTO itinerary_segment (
-    itinerary_segment_id, itinerary_id, city_id, segment_seq, trip_id, departure_stop_id, arrival_stop_id,
-    planned_departure_ts, planned_arrival_ts, fare_id, distance_km
-)
-VALUES
-    (1, 1, 1, 1, 1, 1, 2, TIMESTAMPTZ '2026-02-18 08:00:00+01', TIMESTAMPTZ '2026-02-18 08:13:00+01', 1, 4.100),
-    (2, 1, 1, 2, 2, 2, 4, TIMESTAMPTZ '2026-02-18 08:21:00+01', TIMESTAMPTZ '2026-02-18 08:40:00+01', 1, 6.900),
-    (3, 2, 2, 1, 3, 5, 6, TIMESTAMPTZ '2026-02-18 09:00:00+01', TIMESTAMPTZ '2026-02-18 09:07:00+01', 2, 2.200);
-
-INSERT INTO ticket (
-    ticket_id, city_id, ticket_code, booking_id, itinerary_id, passenger_id, issued_at, valid_from, valid_to, status, qr_payload
-)
-VALUES
-    (1, 1, 'TCK-MIL-000001', 1, 1, 1, TIMESTAMPTZ '2026-02-17 10:16:00+01', TIMESTAMPTZ '2026-02-18 07:50:00+01', TIMESTAMPTZ '2026-02-18 09:30:00+01', 'validated', 'qr://ticket/TCK-MIL-000001'),
-    (2, 2, 'TCK-ROM-000002', 2, 2, 2, TIMESTAMPTZ '2026-02-17 11:41:00+01', TIMESTAMPTZ '2026-02-18 08:50:00+01', TIMESTAMPTZ '2026-02-18 10:30:00+01', 'issued', 'qr://ticket/TCK-ROM-000002');
-
-INSERT INTO payment (
-    payment_id, city_id, booking_id, transaction_ref, amount, currency_code, method, status, paid_at, provider
-)
-VALUES
-    (1, 1, 1, 'TXN-20260217-MIL-0001', 2.20, 'EUR', 'card', 'paid', TIMESTAMPTZ '2026-02-17 10:16:03+01', 'Stripe'),
-    (2, 2, 2, 'TXN-20260217-ROM-0002', 1.50, 'EUR', 'wallet', 'paid', TIMESTAMPTZ '2026-02-17 11:41:18+01', 'PayPal');
-
-INSERT INTO validation (
-    validation_id, city_id, ticket_id, validated_at, validator_device_id, stop_id, result, latitude, longitude, notes
-)
-VALUES
-    (1, 1, 1, TIMESTAMPTZ '2026-02-18 08:02:11+01', 'VAL-MI-0009', 1, 'valid', 45.464247, 9.190011, 'Prima validazione regolare');
+    (1, 1, 1, 'MIL_URB_90', 'EUR', 2.20, 0, -1, 5400),
+    (2, 2, 2, 'ROM_BIT_100', 'EUR', 1.50, 0, -1, 6000);
 
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('city', 'city_id'), COALESCE(MAX(city_id), 1), TRUE) FROM city;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('agency', 'agency_id'), COALESCE(MAX(agency_id), 1), TRUE) FROM agency;
@@ -140,12 +79,3 @@ SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('calendar', 'calendar_id'), COALESCE(MAX(ca
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('trip', 'trip_id'), COALESCE(MAX(trip_id), 1), TRUE) FROM trip;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('stop', 'stop_id'), COALESCE(MAX(stop_id), 1), TRUE) FROM stop;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('fare', 'fare_id'), COALESCE(MAX(fare_id), 1), TRUE) FROM fare;
-SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('customer', 'customer_id'), COALESCE(MAX(customer_id), 1), TRUE) FROM customer;
-SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('passenger', 'passenger_id'), COALESCE(MAX(passenger_id), 1), TRUE) FROM passenger;
-SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('booking', 'booking_id'), COALESCE(MAX(booking_id), 1), TRUE) FROM booking;
-SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('itinerary', 'itinerary_id'), COALESCE(MAX(itinerary_id), 1), TRUE) FROM itinerary;
-SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('itinerary_segment', 'itinerary_segment_id'), COALESCE(MAX(itinerary_segment_id), 1), TRUE) FROM itinerary_segment;
-SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('ticket', 'ticket_id'), COALESCE(MAX(ticket_id), 1), TRUE) FROM ticket;
-SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('payment', 'payment_id'), COALESCE(MAX(payment_id), 1), TRUE) FROM payment;
-SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('validation', 'validation_id'), COALESCE(MAX(validation_id), 1), TRUE) FROM validation;
-

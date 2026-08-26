@@ -354,13 +354,12 @@ DO UPDATE SET
     shape_dist_traveled = EXCLUDED.shape_dist_traveled;
 
 INSERT INTO fare (
-    city_id, agency_id, gtfs_fare_id, fare_name, currency_code, price, payment_method, transfers, transfer_duration_sec, validity_minutes
+    city_id, agency_id, gtfs_fare_id, currency_code, price, payment_method, transfers, transfer_duration_sec
 )
 SELECT
     ctx.city_id,
     ag.agency_id,
     NULLIF(f.fare_id, ''),
-    'GTFS Fare ' || NULLIF(f.fare_id, ''),
     COALESCE(NULLIF(f.currency_type, ''), 'EUR'),
     NULLIF(f.price, '')::NUMERIC(10, 2),
     COALESCE(NULLIF(f.payment_method, ''), '0')::SMALLINT,
@@ -371,8 +370,7 @@ SELECT
     CASE
         WHEN NULLIF(f.transfer_duration, '') ~ '^\d+$' THEN NULLIF(f.transfer_duration, '')::INTEGER
         ELSE NULL
-    END,
-    90
+    END
 FROM gtfs_fares_raw f
 CROSS JOIN gtfs_import_ctx ctx
 JOIN LATERAL (
@@ -387,77 +385,11 @@ WHERE NULLIF(f.fare_id, '') IS NOT NULL
 ON CONFLICT (city_id, gtfs_fare_id)
 DO UPDATE SET
     agency_id = EXCLUDED.agency_id,
-    fare_name = EXCLUDED.fare_name,
     currency_code = EXCLUDED.currency_code,
     price = EXCLUDED.price,
     payment_method = EXCLUDED.payment_method,
     transfers = EXCLUDED.transfers,
     transfer_duration_sec = EXCLUDED.transfer_duration_sec,
     is_active = TRUE;
-
-INSERT INTO ticket_type (
-    city_id,
-    agency_id,
-    fare_id,
-    name,
-    duration_minutes,
-    price_cents,
-    active
-)
-SELECT
-    f.city_id,
-    f.agency_id,
-    f.fare_id,
-    f.fare_name,
-    f.validity_minutes,
-    ROUND(f.price * 100)::INTEGER,
-    f.is_active
-FROM fare f
-JOIN gtfs_import_ctx ctx
-  ON ctx.city_id = f.city_id
-ON CONFLICT (city_id, agency_id, name)
-DO UPDATE SET
-    fare_id = COALESCE(ticket_type.fare_id, EXCLUDED.fare_id),
-    duration_minutes = EXCLUDED.duration_minutes,
-    price_cents = EXCLUDED.price_cents,
-    active = EXCLUDED.active;
-
-WITH default_ticket_types AS (
-    SELECT *
-    FROM (
-        VALUES
-            ('Biglietto 90 minuti', 90, 150),
-            ('Pass giornaliero', 1440, 490),
-            ('Pass settimanale', 10080, 1890)
-    ) AS v(name, duration_minutes, price_cents)
-)
-INSERT INTO ticket_type (
-    city_id,
-    agency_id,
-    fare_id,
-    name,
-    duration_minutes,
-    price_cents,
-    active
-)
-SELECT
-    a.city_id,
-    a.agency_id,
-    NULL::BIGINT,
-    dtt.name,
-    dtt.duration_minutes,
-    dtt.price_cents,
-    TRUE
-FROM agency a
-JOIN gtfs_import_ctx ctx
-  ON ctx.city_id = a.city_id
-CROSS JOIN default_ticket_types dtt
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM ticket_type tt
-    WHERE tt.city_id = a.city_id
-      AND tt.agency_id = a.agency_id
-      AND LOWER(tt.name) = LOWER(dtt.name)
-);
 
 COMMIT;
