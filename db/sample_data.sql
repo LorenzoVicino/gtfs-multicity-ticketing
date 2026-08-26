@@ -46,12 +46,22 @@ VALUES
     (6, 2, 'ROM_COLOSSEO_MB', 'COLOSSEO', 'Colosseo MB', 41.890200, 12.492300, 'RM_URB', 0, 1);
 
 INSERT INTO trip (
-    trip_id, city_id, route_id, calendar_id, gtfs_trip_id, service_date, headsign, short_name, direction_id, wheelchair_accessible, bikes_allowed
+    trip_id, city_id, route_id, calendar_id, gtfs_trip_id, headsign, short_name, direction_id, wheelchair_accessible, bikes_allowed
 )
 VALUES
-    (1, 1, 1, 1, 'M1_20260218_0800', DATE '2026-02-18', 'Sesto 1 Maggio FS', 'M1-0800', 0, 1, 1),
-    (2, 1, 2, 1, 'M2_20260218_0825', DATE '2026-02-18', 'Assago Forum', 'M2-0825', 1, 1, 1),
-    (3, 2, 3, 2, 'MB_20260218_0900', DATE '2026-02-18', 'Laurentina', 'MB-0900', 1, 1, 1);
+    (1, 1, 1, 1, 'M1_0800', 'Sesto 1 Maggio FS', 'M1-0800', 0, 1, 1),
+    (2, 1, 2, 1, 'M2_0825', 'Assago Forum', 'M2-0825', 1, 1, 1),
+    (3, 2, 3, 2, 'MB_0900', 'Laurentina', 'MB-0900', 1, 1, 1);
+
+-- Two exceptions, so the sample exercises both directions of calendar_dates.txt:
+-- 2026-12-25 is a Friday the weekday pattern would cover, and 2026-04-05 is a
+-- Sunday it would not.
+INSERT INTO calendar_date (
+    calendar_date_id, city_id, calendar_id, service_date, exception_type
+)
+VALUES
+    (1, 1, 1, DATE '2026-12-25', 2),
+    (2, 1, 1, DATE '2026-04-05', 1);
 
 INSERT INTO stop_time (
     trip_id, city_id, stop_sequence, stop_id, arrival_time, departure_time, pickup_type, drop_off_type, shape_dist_traveled
@@ -76,6 +86,7 @@ SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('city', 'city_id'), COALESCE(MAX(city_id), 
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('agency', 'agency_id'), COALESCE(MAX(agency_id), 1), TRUE) FROM agency;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('route', 'route_id'), COALESCE(MAX(route_id), 1), TRUE) FROM route;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('calendar', 'calendar_id'), COALESCE(MAX(calendar_id), 1), TRUE) FROM calendar;
+SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('calendar_date', 'calendar_date_id'), COALESCE(MAX(calendar_date_id), 1), TRUE) FROM calendar_date;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('trip', 'trip_id'), COALESCE(MAX(trip_id), 1), TRUE) FROM trip;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('stop', 'stop_id'), COALESCE(MAX(stop_id), 1), TRUE) FROM stop;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('fare', 'fare_id'), COALESCE(MAX(fare_id), 1), TRUE) FROM fare;

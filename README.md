@@ -16,6 +16,7 @@ The repository began as a university project about designing a PostgreSQL databa
 - Support multiple agencies, calendars, routes, trip patterns, and times beyond 24:00.
 - Export a standard GTFS ZIP archive.
 - Safely synchronize a feed with PostgreSQL by deactivating rows that disappear instead of deleting them.
+- Resolve service on a date from `calendar.txt` and the `calendar_dates.txt` exceptions, rather than from the date a feed happened to be imported.
 - Rotate responsive home-page photography while respecting `prefers-reduced-motion`.
 
 ## Architecture
@@ -161,9 +162,22 @@ place as described in [docs/deployment.md](docs/deployment.md).
 
 `db/migrations/` holds one-off scripts that bring an **existing** database to the current schema,
 which the init scripts cannot do because they only run on an empty volume. Run them by hand, in
-numeric order, once per database; each one is idempotent. `001_drop_ticketing.sql` removes the ticketing tables that the
-application no longer has, and destroys their data permanently — back up and rehearse on a copy
-first, as described in [docs/deployment.md](docs/deployment.md).
+numeric order, once per database; each one is idempotent. Both delete data, so back up and
+rehearse on a copy first, as described in [docs/deployment.md](docs/deployment.md).
+
+- `001_drop_ticketing.sql` removes the ticketing tables the application no longer has.
+- `002_calendar_correctness.sql` moves trips off `service_date` and adds `calendar_date`.
+
+### How service on a date is resolved
+
+A trip is not tied to a date. `active_calendar_ids(city_id, date)` returns the services running on
+a date: those whose weekly pattern in `calendar.txt` covers it and that no `calendar_dates.txt`
+exception removes, plus those an exception adds. Departures then filter trips on those calendars.
+
+This means **a feed that does not cover today has no departures today**, which is correct rather
+than broken. The bundled demo feeds are expired: the Cagliari sample covers March 2026 and the
+Bologna feed ends in June 2026, so departures appear only for dates inside those windows. The stop
+panel reports the window a feed covers when it has nothing to show for the date you asked for.
 
 The bundled datasets make the demo reproducible. Before adding another feed, verify its license, attribution requirements, and compatibility with public redistribution.
 

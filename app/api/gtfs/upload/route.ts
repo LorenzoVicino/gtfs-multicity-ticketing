@@ -60,12 +60,10 @@ export async function POST(request: Request) {
     }
     await fs.writeFile(zipPath, buffer);
 
-    const serviceDate = new Date().toISOString().slice(0, 10);
     await importGtfsZip({
       zipPath,
       cityCode,
-      cityName,
-      serviceDate
+      cityName
     });
     await savePublishedGtfsSource(cityCode, buffer);
 

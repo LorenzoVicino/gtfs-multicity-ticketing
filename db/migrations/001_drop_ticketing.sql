@@ -89,14 +89,18 @@ ALTER TABLE IF EXISTS fare DROP COLUMN IF EXISTS validity_minutes;
 
 -- Still inside the transaction: if any CASCADE above reached a GTFS object, abort
 -- and roll the whole migration back rather than report the loss afterwards.
+--
+-- mv_next_departures used to be on this list. Migration 002 drops it and the
+-- current db/schema.sql no longer creates it, so requiring it here would make this
+-- migration fail on a database that is already on 002, and on any fresh one. The
+-- eight tables are what the CASCADE could actually have reached.
 DO $$
 DECLARE
     target TEXT;
     missing TEXT[] := ARRAY[]::TEXT[];
 BEGIN
     FOREACH target IN ARRAY ARRAY[
-        'city', 'agency', 'route', 'calendar', 'trip', 'stop', 'stop_time', 'fare',
-        'mv_next_departures'
+        'city', 'agency', 'route', 'calendar', 'trip', 'stop', 'stop_time', 'fare'
     ]
     LOOP
         IF to_regclass('transport.' || target) IS NULL THEN
@@ -108,7 +112,7 @@ BEGIN
         RAISE EXCEPTION 'aborting: GTFS objects would be lost: %', array_to_string(missing, ', ');
     END IF;
 
-    RAISE NOTICE 'GTFS schema intact: 8 tables and mv_next_departures still present';
+    RAISE NOTICE 'GTFS schema intact: all 8 tables still present';
 END $$;
 
 COMMIT;

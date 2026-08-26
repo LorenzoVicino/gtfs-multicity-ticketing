@@ -9,7 +9,6 @@ type ImportParams = {
   zipPath: string;
   cityCode: string;
   cityName: string;
-  serviceDate: string;
 };
 
 const REQUIRED_FILES = ["agency.txt", "routes.txt", "stops.txt", "trips.txt", "stop_times.txt"];
@@ -27,6 +26,7 @@ const OPTIONAL_FILES: Record<string, string[]> = {
     "start_date",
     "end_date"
   ],
+  "calendar_dates.txt": ["service_id", "date", "exception_type"],
   "fare_attributes.txt": [
     "fare_id",
     "price",
@@ -60,6 +60,7 @@ const NORMALIZED_COLUMNS: Record<string, string[]> = {
     "wheelchair_boarding"
   ],
   "calendar.txt": OPTIONAL_FILES["calendar.txt"],
+  "calendar_dates.txt": OPTIONAL_FILES["calendar_dates.txt"],
   "trips.txt": [
     "route_id",
     "service_id",
@@ -256,6 +257,7 @@ export async function importGtfsZip(params: ImportParams): Promise<void> {
     .replaceAll(":'routes_file'", `'${importPath(resolved["routes.txt"])}'`)
     .replaceAll(":'stops_file'", `'${importPath(resolved["stops.txt"])}'`)
     .replaceAll(":'calendar_file'", `'${importPath(resolved["calendar.txt"])}'`)
+    .replaceAll(":'calendar_dates_file'", `'${importPath(resolved["calendar_dates.txt"])}'`)
     .replaceAll(":'trips_file'", `'${importPath(resolved["trips.txt"])}'`)
     .replaceAll(
       ":'stop_times_file'",
@@ -266,8 +268,7 @@ export async function importGtfsZip(params: ImportParams): Promise<void> {
       `'${importPath(resolved["fare_attributes.txt"])}'`
     )
     .replaceAll(":'city_code'", `'${cityCode}'`)
-    .replaceAll(":'city_name'", `'${params.cityName.replaceAll("'", "''")}'`)
-    .replaceAll(":'service_date'", `'${params.serviceDate}'`);
+    .replaceAll(":'city_name'", `'${params.cityName.replaceAll("'", "''")}'`);
 
   const sqlFile = path.join(workDir, "import.sql");
   await fs.writeFile(sqlFile, sql, "utf8");

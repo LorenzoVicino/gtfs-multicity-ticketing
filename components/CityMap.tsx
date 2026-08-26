@@ -40,11 +40,17 @@ type StopDeparture = {
   tripId: number;
 };
 
+type ServiceWindow = {
+  firstDate: string;
+  lastDate: string;
+};
+
 type StopDeparturesResponse = {
   cityId: number;
   stopId: number;
   stopName: string;
   serviceDate: string;
+  serviceWindow: ServiceWindow | null;
   departures: StopDeparture[];
 };
 
@@ -227,6 +233,7 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
   const [departuresStatus, setDeparturesStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [departuresError, setDeparturesError] = useState<string | null>(null);
   const [departuresData, setDeparturesData] = useState<StopDeparture[]>([]);
+  const [serviceWindow, setServiceWindow] = useState<ServiceWindow | null>(null);
   const [serviceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const departuresCacheRef = useRef<Map<string, StopDeparturesResponse>>(new Map());
 
@@ -235,6 +242,7 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
     setDeparturesStatus("idle");
     setDeparturesError(null);
     setDeparturesData([]);
+    setServiceWindow(null);
   }, [payload?.city.id]);
 
   useEffect(() => {
@@ -250,6 +258,7 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
       setDeparturesStatus("ready");
       setDeparturesError(null);
       setDeparturesData(cached.departures);
+      setServiceWindow(cached.serviceWindow ?? null);
       return;
     }
 
@@ -272,6 +281,7 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
 
         departuresCacheRef.current.set(cacheKey, json as StopDeparturesResponse);
         setDeparturesData((json as StopDeparturesResponse).departures);
+        setServiceWindow((json as StopDeparturesResponse).serviceWindow ?? null);
         setDeparturesStatus("ready");
       } catch (error) {
         if (controller.signal.aborted) {
@@ -279,6 +289,7 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
         }
         setDeparturesStatus("error");
         setDeparturesData([]);
+        setServiceWindow(null);
         setDeparturesError(error instanceof Error ? error.message : "Errore lettura partenze");
       }
     }
@@ -289,6 +300,11 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
       controller.abort();
     };
   }, [payload, selectedStop, serviceDate]);
+
+  function formatServiceDate(isoDate: string): string {
+    const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return match ? `${match[3]}/${match[2]}/${match[1]}` : isoDate;
+  }
 
   function formatDepartureTime(departureTs: string): string {
     const date = new Date(departureTs);
@@ -466,7 +482,11 @@ export function CityMap({ payload, activeRouteIds, focusedRouteId, onStopPanelCh
           ) : null}
 
           {departuresStatus === "ready" && visibleDepartures.length === 0 ? (
-            <p className="stop-departures-state">Nessuna partenza trovata</p>
+            <p className="stop-departures-state">
+              {serviceWindow
+                ? `Nessun servizio programmato per il ${formatServiceDate(serviceDate)}. Il feed copre dal ${formatServiceDate(serviceWindow.firstDate)} al ${formatServiceDate(serviceWindow.lastDate)}.`
+                : "Nessuna partenza trovata: il feed non contiene calendari di servizio."}
+            </p>
           ) : null}
 
           {departuresStatus === "ready" && visibleDepartures.length > 0 ? (

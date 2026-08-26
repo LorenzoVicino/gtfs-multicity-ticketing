@@ -223,7 +223,7 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
         COALESCE(NULLIF(r.short_name, ''), NULLIF(r.long_name, ''), r.gtfs_route_id) AS line_name,
         ROW_NUMBER() OVER (
           PARTITION BY t.route_id
-          ORDER BY t.service_date DESC, t.trip_id
+          ORDER BY t.trip_id
         ) AS rn
       FROM transport.trip t
       JOIN transport.route r
