@@ -117,6 +117,36 @@ docker compose exec -T postgres psql -U postgres -d gtfs_hub -v ON_ERROR_STOP=1 
 A development database that holds nothing worth keeping needs none of this — `docker compose down -v`
 and a fresh `docker compose up -d postgres` rebuild it from `db/schema.sql`, which is already correct.
 
+### 002 — calendars decide which trips run
+
+`db/migrations/002_calendar_correctness.sql` moves the database off `trip.service_date`.
+
+Before it, every trip carried a mandatory date set to the date of the import that created it, so the
+same GTFS trip appeared once per import and "next departures" never really derived from
+`calendar.txt`. They stopped working the day after an import. `calendar_dates.txt` was not imported
+at all, so service exceptions were dropped.
+
+After it, a GTFS trip is one row, and whether it runs on a date is computed by
+`active_calendar_ids(city_id, date)` from the weekly pattern plus the exceptions.
+
+The migration drops duplicate `trip` rows for the same `gtfs_trip_id`, keeping the one that carries
+`stop_time` rows. In practice the duplicates carry none, because every import deletes the city's
+`stop_time` rows and reattaches them to the trips it just wrote — but this is still a delete, so
+follow the same three steps as 001: back up, rehearse against the restored backup, then run it.
+
+```bash
+docker compose --env-file deploy.env -f compose.production.yml exec -T postgres \
+  psql -U gtfs -d gtfs_hub -v ON_ERROR_STOP=1 < db/migrations/002_calendar_correctness.sql
+```
+
+Two things to expect afterwards:
+
+- **`calendar_date` is empty until the next feed import.** The migration creates the table; only an
+  import fills it. Until then a service runs strictly on its weekly pattern.
+- **Departures are empty for dates the feed does not cover**, which is the point. If a feed's
+  calendar ended last month, "today" correctly has no service. The last verification query the
+  migration prints shows each city's service window and whether today falls inside it.
+
 ## Security boundary
 
 - The Next.js process runs as a non-root user.

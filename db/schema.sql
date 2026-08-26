@@ -65,13 +65,23 @@ CREATE TABLE calendar (
     CHECK (end_date >= start_date)
 );
 
+CREATE TABLE calendar_date (
+    calendar_date_id BIGSERIAL PRIMARY KEY,
+    city_id BIGINT NOT NULL REFERENCES city (city_id) ON DELETE RESTRICT,
+    calendar_id BIGINT NOT NULL,
+    service_date DATE NOT NULL,
+    exception_type SMALLINT NOT NULL CHECK (exception_type IN (1, 2)),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (city_id, calendar_id, service_date),
+    FOREIGN KEY (calendar_id, city_id) REFERENCES calendar (calendar_id, city_id) ON DELETE CASCADE
+);
+
 CREATE TABLE trip (
     trip_id BIGSERIAL PRIMARY KEY,
     city_id BIGINT NOT NULL REFERENCES city (city_id) ON DELETE RESTRICT,
     route_id BIGINT NOT NULL,
     calendar_id BIGINT NOT NULL,
     gtfs_trip_id VARCHAR(96) NOT NULL,
-    service_date DATE NOT NULL,
     headsign VARCHAR(180),
     short_name VARCHAR(32),
     direction_id SMALLINT CHECK (direction_id IN (0, 1)),
@@ -79,7 +89,7 @@ CREATE TABLE trip (
     wheelchair_accessible SMALLINT CHECK (wheelchair_accessible IN (0, 1, 2)),
     bikes_allowed SMALLINT CHECK (bikes_allowed IN (0, 1, 2)),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (city_id, gtfs_trip_id, service_date),
+    UNIQUE (city_id, gtfs_trip_id),
     UNIQUE (trip_id, city_id),
     FOREIGN KEY (route_id, city_id) REFERENCES route (route_id, city_id) ON DELETE RESTRICT,
     FOREIGN KEY (calendar_id, city_id) REFERENCES calendar (calendar_id, city_id) ON DELETE RESTRICT
@@ -139,28 +149,44 @@ CREATE TABLE fare (
     FOREIGN KEY (agency_id, city_id) REFERENCES agency (agency_id, city_id) ON DELETE RESTRICT
 );
 
-CREATE INDEX idx_trip_city_service_date ON trip (city_id, service_date);
+CREATE INDEX idx_trip_city_calendar ON trip (city_id, calendar_id);
 CREATE INDEX idx_stop_time_stop_departure ON stop_time (stop_id, departure_time);
+CREATE INDEX idx_calendar_date_city_date ON calendar_date (city_id, service_date, exception_type);
 
-CREATE MATERIALIZED VIEW mv_next_departures AS
-SELECT
-    st.city_id,
-    st.stop_id,
-    s.name AS stop_name,
-    t.trip_id,
-    r.route_id,
-    COALESCE(r.short_name, r.long_name) AS line_name,
-    t.service_date + st.departure_time AS departure_ts
-FROM stop_time st
-JOIN trip t
-  ON t.trip_id = st.trip_id
- AND t.city_id = st.city_id
-JOIN route r
-  ON r.route_id = t.route_id
- AND r.city_id = t.city_id
-JOIN stop s
-  ON s.stop_id = st.stop_id
- AND s.city_id = st.city_id
-WHERE (t.service_date + st.departure_time) >= NOW()
-ORDER BY departure_ts
-WITH NO DATA;
+-- A service runs on a date when its weekly pattern covers that date and no
+-- exception removes it, or when an exception adds it. That is the GTFS rule
+-- spanning calendar.txt and calendar_dates.txt, and it is the only place the
+-- rule is written down.
+CREATE OR REPLACE FUNCTION active_calendar_ids(p_city_id BIGINT, p_date DATE)
+RETURNS TABLE (calendar_id BIGINT)
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT c.calendar_id
+    FROM calendar c
+    WHERE c.city_id = p_city_id
+      AND p_date BETWEEN c.start_date AND c.end_date
+      AND CASE EXTRACT(ISODOW FROM p_date)
+              WHEN 1 THEN c.monday
+              WHEN 2 THEN c.tuesday
+              WHEN 3 THEN c.wednesday
+              WHEN 4 THEN c.thursday
+              WHEN 5 THEN c.friday
+              WHEN 6 THEN c.saturday
+              ELSE c.sunday
+          END
+      AND NOT EXISTS (
+          SELECT 1
+          FROM calendar_date removed
+          WHERE removed.city_id = c.city_id
+            AND removed.calendar_id = c.calendar_id
+            AND removed.service_date = p_date
+            AND removed.exception_type = 2
+      )
+  UNION
+    SELECT added.calendar_id
+    FROM calendar_date added
+    WHERE added.city_id = p_city_id
+      AND added.service_date = p_date
+      AND added.exception_type = 1;
+$$;

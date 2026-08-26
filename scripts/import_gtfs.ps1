@@ -5,7 +5,6 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$FeedPath,
 
-    [string]$ServiceDate = (Get-Date -Format "yyyy-MM-dd"),
     [string]$CityName = "",
     [string]$DbName = "gtfs_hub",
     [string]$DbUser = ""
@@ -54,6 +53,7 @@ $requiredFiles = @(
 
 $optionalFiles = @{
     "calendar.txt" = "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date"
+    "calendar_dates.txt" = "service_id,date,exception_type"
     "fare_attributes.txt" = "fare_id,price,currency_type,payment_method,transfers,transfer_duration"
 }
 
@@ -88,11 +88,11 @@ $args = @(
     "-v", "ON_ERROR_STOP=1",
     "-v", "city_code=$($CityCode.ToUpper())",
     "-v", "city_name=$CityName",
-    "-v", "service_date=$ServiceDate",
     "-v", "agency_file=$($resolved["agency.txt"])",
     "-v", "routes_file=$($resolved["routes.txt"])",
     "-v", "stops_file=$($resolved["stops.txt"])",
     "-v", "calendar_file=$($resolved["calendar.txt"])",
+    "-v", "calendar_dates_file=$($resolved["calendar_dates.txt"])",
     "-v", "trips_file=$($resolved["trips.txt"])",
     "-v", "stop_times_file=$($resolved["stop_times.txt"])",
     "-v", "fare_attributes_file=$($resolved["fare_attributes.txt"])",
@@ -107,7 +107,6 @@ if (-not [string]::IsNullOrWhiteSpace($DbUser)) {
 Write-Host "Starting GTFS import..."
 Write-Host "  CityCode: $($CityCode.ToUpper())"
 Write-Host "  CityName: $CityName"
-Write-Host "  ServiceDate: $ServiceDate"
 Write-Host "  Source: $workingDir"
 
 & $psqlCmd.Source @args

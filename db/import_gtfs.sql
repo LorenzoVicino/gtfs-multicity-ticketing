@@ -47,6 +47,12 @@ CREATE TEMP TABLE gtfs_calendar_raw (
     end_date TEXT
 );
 
+CREATE TEMP TABLE gtfs_calendar_dates_raw (
+    service_id TEXT,
+    date TEXT,
+    exception_type TEXT
+);
+
 CREATE TEMP TABLE gtfs_trips_raw (
     route_id TEXT,
     service_id TEXT,
@@ -83,6 +89,7 @@ CREATE TEMP TABLE gtfs_fares_raw (
 \copy gtfs_routes_raw FROM :'routes_file' WITH (FORMAT csv, HEADER true)
 \copy gtfs_stops_raw FROM :'stops_file' WITH (FORMAT csv, HEADER true)
 \copy gtfs_calendar_raw FROM :'calendar_file' WITH (FORMAT csv, HEADER true)
+\copy gtfs_calendar_dates_raw FROM :'calendar_dates_file' WITH (FORMAT csv, HEADER true)
 \copy gtfs_trips_raw FROM :'trips_file' WITH (FORMAT csv, HEADER true)
 \copy gtfs_stop_times_raw FROM :'stop_times_file' WITH (FORMAT csv, HEADER true)
 \copy gtfs_fares_raw FROM :'fare_attributes_file' WITH (FORMAT csv, HEADER true)
@@ -251,20 +258,37 @@ DO UPDATE SET
     start_date = EXCLUDED.start_date,
     end_date = EXCLUDED.end_date;
 
+-- A service_id can appear in trips.txt or calendar_dates.txt without a calendar.txt
+-- row: GTFS allows a service defined purely by exceptions. Such a service gets a
+-- calendar row with no weekly pattern, so only calendar_dates can activate it.
+-- The date range spans that service's own exceptions; the COALESCE tail only
+-- satisfies NOT NULL for a service that no exception ever activates, which never
+-- runs whatever range we store.
 INSERT INTO calendar (
     city_id, gtfs_service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date
 )
 SELECT
     ctx.city_id,
     tr.service_id,
-    TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE,
-    :'service_date'::DATE,
-    :'service_date'::DATE
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
+    COALESCE(exceptions.first_date, CURRENT_DATE),
+    COALESCE(exceptions.last_date, CURRENT_DATE)
 FROM (
     SELECT DISTINCT NULLIF(service_id, '') AS service_id
     FROM gtfs_trips_raw
+    UNION
+    SELECT DISTINCT NULLIF(service_id, '') AS service_id
+    FROM gtfs_calendar_dates_raw
 ) tr
 CROSS JOIN gtfs_import_ctx ctx
+LEFT JOIN LATERAL (
+    SELECT
+        MIN(TO_DATE(NULLIF(cd.date, ''), 'YYYYMMDD')) AS first_date,
+        MAX(TO_DATE(NULLIF(cd.date, ''), 'YYYYMMDD')) AS last_date
+    FROM gtfs_calendar_dates_raw cd
+    WHERE NULLIF(cd.service_id, '') = tr.service_id
+      AND NULLIF(cd.date, '') ~ '^\d{8}$'
+) exceptions ON TRUE
 WHERE tr.service_id IS NOT NULL
   AND NOT EXISTS (
       SELECT 1
@@ -273,15 +297,40 @@ WHERE tr.service_id IS NOT NULL
         AND c.gtfs_service_id = tr.service_id
   );
 
+-- calendar_dates.txt. The upload is authoritative for the city, so exceptions that
+-- disappeared from the feed are removed rather than left behind.
+DELETE FROM calendar_date cd
+USING gtfs_import_ctx ctx
+WHERE cd.city_id = ctx.city_id;
+
+INSERT INTO calendar_date (
+    city_id, calendar_id, service_date, exception_type
+)
+SELECT
+    ctx.city_id,
+    c.calendar_id,
+    TO_DATE(NULLIF(cd.date, ''), 'YYYYMMDD'),
+    NULLIF(cd.exception_type, '')::SMALLINT
+FROM gtfs_calendar_dates_raw cd
+CROSS JOIN gtfs_import_ctx ctx
+JOIN calendar c
+  ON c.city_id = ctx.city_id
+ AND c.gtfs_service_id = NULLIF(cd.service_id, '')
+WHERE NULLIF(cd.service_id, '') IS NOT NULL
+  AND NULLIF(cd.date, '') ~ '^\d{8}$'
+  AND NULLIF(cd.exception_type, '') IN ('1', '2')
+ON CONFLICT (city_id, calendar_id, service_date)
+DO UPDATE SET
+    exception_type = EXCLUDED.exception_type;
+
 INSERT INTO trip (
-    city_id, route_id, calendar_id, gtfs_trip_id, service_date, headsign, short_name, direction_id, block_id, wheelchair_accessible, bikes_allowed
+    city_id, route_id, calendar_id, gtfs_trip_id, headsign, short_name, direction_id, block_id, wheelchair_accessible, bikes_allowed
 )
 SELECT
     ctx.city_id,
     r.route_id,
     c.calendar_id,
     NULLIF(tr.trip_id, ''),
-    :'service_date'::DATE,
     NULLIF(tr.trip_headsign, ''),
     NULLIF(tr.trip_short_name, ''),
     CASE
@@ -306,7 +355,7 @@ JOIN calendar c
   ON c.city_id = ctx.city_id
  AND c.gtfs_service_id = NULLIF(tr.service_id, '')
 WHERE NULLIF(tr.trip_id, '') IS NOT NULL
-ON CONFLICT (city_id, gtfs_trip_id, service_date)
+ON CONFLICT (city_id, gtfs_trip_id)
 DO UPDATE SET
     route_id = EXCLUDED.route_id,
     calendar_id = EXCLUDED.calendar_id,
@@ -338,7 +387,6 @@ CROSS JOIN gtfs_import_ctx ctx
 JOIN trip t
   ON t.city_id = ctx.city_id
  AND t.gtfs_trip_id = NULLIF(st.trip_id, '')
- AND t.service_date = :'service_date'::DATE
 JOIN stop s
   ON s.city_id = ctx.city_id
  AND s.gtfs_stop_id = NULLIF(st.stop_id, '')

@@ -27,6 +27,7 @@ const OPTIONAL_FILES = {
     "start_date",
     "end_date"
   ],
+  "calendar_dates.txt": ["service_id", "date", "exception_type"],
   "fare_attributes.txt": [
     "fare_id",
     "price",
@@ -60,6 +61,7 @@ const NORMALIZED_COLUMNS = {
     "wheelchair_boarding"
   ],
   "calendar.txt": OPTIONAL_FILES["calendar.txt"],
+  "calendar_dates.txt": OPTIONAL_FILES["calendar_dates.txt"],
   "trips.txt": [
     "route_id",
     "service_id",
@@ -220,7 +222,7 @@ async function cityExists(cityCode) {
   }
 }
 
-async function importZip({ zipPath, cityCode, cityName, serviceDate }) {
+async function importZip({ zipPath, cityCode, cityName }) {
   const uploadsRoot = path.join(repoRoot, "data", "gtfs", "incoming", "uploads", "bundled");
   await fs.mkdir(uploadsRoot, { recursive: true });
 
@@ -271,6 +273,10 @@ async function importZip({ zipPath, cityCode, cityName, serviceDate }) {
       ":'calendar_file'",
       `'${toUnixPath(path.join("/work", path.relative(repoRoot, resolved["calendar.txt"])))}'`
     )
+    .replaceAll(
+      ":'calendar_dates_file'",
+      `'${toUnixPath(path.join("/work", path.relative(repoRoot, resolved["calendar_dates.txt"])))}'`
+    )
     .replaceAll(":'trips_file'", `'${toUnixPath(path.join("/work", path.relative(repoRoot, resolved["trips.txt"])))}'`)
     .replaceAll(
       ":'stop_times_file'",
@@ -281,8 +287,7 @@ async function importZip({ zipPath, cityCode, cityName, serviceDate }) {
       `'${toUnixPath(path.join("/work", path.relative(repoRoot, resolved["fare_attributes.txt"])))}'`
     )
     .replaceAll(":'city_code'", `'${cityCode}'`)
-    .replaceAll(":'city_name'", `'${cityName.replaceAll("'", "''")}'`)
-    .replaceAll(":'service_date'", `'${serviceDate}'`);
+    .replaceAll(":'city_name'", `'${cityName.replaceAll("'", "''")}'`);
 
   const sqlFile = path.join(workDir, "import.sql");
   await fs.writeFile(sqlFile, sql, "utf8");
@@ -331,9 +336,8 @@ async function main() {
     return;
   }
 
-  const serviceDate = new Date().toISOString().slice(0, 10);
   console.log("Automatically importing the bundled Cagliari feed...");
-  await importZip({ zipPath, cityCode, cityName, serviceDate });
+  await importZip({ zipPath, cityCode, cityName });
   console.log("Cagliari import complete.");
 }
 

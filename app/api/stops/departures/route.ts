@@ -12,6 +12,11 @@ type DepartureRow = {
   trip_id: number;
 };
 
+type ServiceWindowRow = {
+  first_date: string | null;
+  last_date: string | null;
+};
+
 function parsePositiveInt(value: string | null): number | null {
   if (!value) {
     return null;
@@ -83,10 +88,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Fermata non trovata per la citta indicata" }, { status: 404 });
     }
 
+    // A trip is not tied to a date. The date selects the calendars that are active
+    // on it -- weekly pattern from calendar.txt, minus and plus the exceptions from
+    // calendar_dates.txt -- and the trips hang off those calendars.
     const departuresResult = await client.query<DepartureRow>(
       `
       SELECT
-          to_char(t.service_date + st.departure_time, 'YYYY-MM-DD"T"HH24:MI:SS') AS departure_ts,
+          to_char($3::date + st.departure_time, 'YYYY-MM-DD"T"HH24:MI:SS') AS departure_ts,
           COALESCE(NULLIF(r.short_name, ''), NULLIF(r.long_name, ''), r.gtfs_route_id) AS line_name,
           r.route_id,
           t.trip_id
@@ -99,19 +107,45 @@ export async function GET(request: Request) {
        AND r.city_id = t.city_id
       WHERE st.city_id = $1
         AND st.stop_id = $2
-        AND t.service_date = $3::date
-        AND (t.service_date + st.departure_time) >= NOW()
-      ORDER BY t.service_date + st.departure_time
+        AND t.calendar_id IN (SELECT calendar_id FROM active_calendar_ids($1::bigint, $3::date))
+        AND ($3::date + st.departure_time) >= NOW()
+      ORDER BY $3::date + st.departure_time
       LIMIT 10
       `,
       [cityId, stopId, serviceDate]
     );
+
+    // An empty result is a legitimate answer: the feed may simply not cover this
+    // date. Report the window the feed does cover so the caller can say which.
+    let serviceWindow: { firstDate: string; lastDate: string } | null = null;
+    if (departuresResult.rows.length === 0) {
+      const windowResult = await client.query<ServiceWindowRow>(
+        `
+        SELECT
+            MIN(covered)::text AS first_date,
+            MAX(covered)::text AS last_date
+        FROM (
+            SELECT start_date AS covered FROM calendar WHERE city_id = $1
+            UNION ALL
+            SELECT end_date FROM calendar WHERE city_id = $1
+            UNION ALL
+            SELECT service_date FROM calendar_date WHERE city_id = $1
+        ) dates
+        `,
+        [cityId]
+      );
+      const row = windowResult.rows[0];
+      if (row?.first_date && row.last_date) {
+        serviceWindow = { firstDate: row.first_date, lastDate: row.last_date };
+      }
+    }
 
     return NextResponse.json({
       cityId,
       stopId,
       stopName: stopResult.rows[0].stop_name,
       serviceDate,
+      serviceWindow,
       departures: departuresResult.rows.map((row: DepartureRow) => ({
         departureTs: row.departure_ts,
         lineName: row.line_name,
