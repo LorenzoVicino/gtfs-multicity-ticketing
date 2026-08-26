@@ -7,7 +7,7 @@ param(
 
     [string]$ServiceDate = (Get-Date -Format "yyyy-MM-dd"),
     [string]$CityName = "",
-    [string]$DbName = "gtfs_ticketing",
+    [string]$DbName = "gtfs_hub",
     [string]$DbUser = ""
 )
 

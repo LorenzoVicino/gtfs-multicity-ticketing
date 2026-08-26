@@ -468,7 +468,7 @@ body {
 }
 
 .map-back {
-  right: 1rem;
+  right: calc(1rem + var(--map-panel-shift, 0px));
   top: 1rem;
   padding: 0.42rem 0.82rem;
   background: rgba(255, 255, 255, 0.9);
@@ -479,7 +479,7 @@ body {
 }
 
 .map-edit {
-  right: 8.4rem;
+  right: calc(8.4rem + var(--map-panel-shift, 0px));
   top: 1rem;
   padding: 0.42rem 0.82rem;
   background: rgba(10, 28, 18, 0.7);
@@ -501,7 +501,7 @@ body {
 }
 
 .map-floating-shifted {
-  right: calc(1rem + min(340px, calc(100vw - 2rem)) + 0.85rem);
+  --map-panel-shift: calc(min(340px, calc(100vw - 2rem)) + 0.85rem);
 }
 
 .line-sidebar {
@@ -1007,7 +1007,7 @@ body {
   }
 
   .map-edit {
-    right: 7.8rem;
+    right: calc(7.8rem + var(--map-panel-shift, 0px));
   }
 
   .line-sidebar {
@@ -1038,7 +1038,7 @@ body {
   }
 
   .map-floating-shifted {
-    right: 0.75rem;
+    --map-panel-shift: 0px;
   }
 
   .gtfs-upload-meta {

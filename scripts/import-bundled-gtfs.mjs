@@ -209,7 +209,7 @@ async function cityExists(cityCode) {
       "-U",
       "postgres",
       "-d",
-      "gtfs_ticketing",
+      "gtfs_hub",
       "-tAc",
       `SELECT 1 FROM transport.city WHERE city_code = '${cityCode}' LIMIT 1;`
     ]);
@@ -306,7 +306,7 @@ async function importZip({ zipPath, cityCode, cityName, serviceDate }) {
     "-U",
     "postgres",
     "-d",
-    "gtfs_ticketing",
+    "gtfs_hub",
     "-v",
     "ON_ERROR_STOP=1",
     "-f",

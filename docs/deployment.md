@@ -35,6 +35,22 @@ npm run deploy:local
 
 Create a PostgreSQL backup before every update that changes files under `db/`.
 
+### One-off: the database is now `gtfs_hub`
+
+Instances created before the rename hold a database named `gtfs_ticketing`, and Compose now
+points at `gtfs_hub`. Changing `POSTGRES_DB` does not rename an existing volume, so rename the
+database once, before the first deployment that includes this change:
+
+```bash
+docker compose --env-file deploy.env -f compose.production.yml stop app
+docker compose --env-file deploy.env -f compose.production.yml exec postgres \
+  psql -U gtfs -d postgres -c 'ALTER DATABASE gtfs_ticketing RENAME TO gtfs_hub;'
+npm run deploy:local
+```
+
+Stop the application first: PostgreSQL refuses to rename a database that still has open
+connections. A fresh instance needs none of this.
+
 ## Security boundary
 
 - The Next.js process runs as a non-root user.

@@ -73,7 +73,7 @@ npm run dev
 Local variables are documented in `.env.example`:
 
 ```env
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/gtfs_ticketing
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/gtfs_hub
 GTFS_IMPORT_MODE=docker
 GTFS_VALIDATOR_URL=http://127.0.0.1:8080/v2
 GTFS_VALIDATOR_COUNTRY_CODE=IT
@@ -153,6 +153,11 @@ To completely reset the development environment, including its local database vo
 docker compose down -v
 docker compose up -d postgres
 ```
+
+The database is named `gtfs_hub`. A development volume created before the rename still holds
+`gtfs_ticketing`: recreate it with the commands above and update `DATABASE_URL` in your
+`.env.local`, which is not version-controlled. For a deployed instance, rename the database in
+place as described in [docs/deployment.md](docs/deployment.md).
 
 The bundled datasets make the demo reproducible. Before adding another feed, verify its license, attribution requirements, and compatibility with public redistribution.
 
