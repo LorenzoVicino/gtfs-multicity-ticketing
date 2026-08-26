@@ -34,5 +34,5 @@ data/gtfs/
   -CityName "Milan" `
   -FeedPath ".\data\gtfs\raw\MIL\feed.zip" `
   -ServiceDate 2026-02-18 `
-  -DbName gtfs_ticketing
+  -DbName gtfs_hub
 ```
