@@ -175,7 +175,7 @@ function runDockerImport(sqlPathInWorkdir: string): Promise<void> {
     "run", "--rm", "--network", "container:gtfs-postgres",
     "-e", "PGPASSWORD=postgres",
     "-v", `${process.cwd()}:/work`, "-w", "/work",
-    "postgres:16", "psql", "-h", "localhost", "-U", "postgres", "-d", "gtfs_ticketing",
+    "postgres:16", "psql", "-h", "localhost", "-U", "postgres", "-d", "gtfs_hub",
     "-v", "ON_ERROR_STOP=1", "-f", sqlPathInWorkdir
   ], "docker");
 }
