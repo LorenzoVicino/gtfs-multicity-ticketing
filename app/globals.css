@@ -821,6 +821,11 @@ body {
   color: #52606d;
 }
 
+.line-badge-approx {
+  background: rgba(176, 122, 14, 0.14);
+  color: #8a5f06;
+}
+
 .line-item-state {
   display: inline-flex;
   align-items: center;

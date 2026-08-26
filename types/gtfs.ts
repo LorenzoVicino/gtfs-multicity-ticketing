@@ -21,6 +21,8 @@ export type RouteLine = {
   longName: string | null;
   color: string;
   points: [number, number][];
+  /** "shape" when points come from shapes.txt, "stops" when reconstructed from the stop sequence. */
+  geometry: "shape" | "stops";
   stopIds: number[];
   tripsCount: number;
   stopEvents: number;

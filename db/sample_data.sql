@@ -45,13 +45,26 @@ VALUES
     (5, 2, 'ROM_TERMINI_MB', 'TERMINI', 'Roma Termini MB', 41.901200, 12.501600, 'RM_URB', 0, 1),
     (6, 2, 'ROM_COLOSSEO_MB', 'COLOSSEO', 'Colosseo MB', 41.890200, 12.492300, 'RM_URB', 0, 1);
 
+-- One route carries real geometry and one does not, so the sample covers both the
+-- shapes.txt path and the stop-derived fallback the map labels as approximate.
+INSERT INTO shape (shape_id, city_id, gtfs_shape_id)
+VALUES
+    (1, 1, 'MIL_M1_SHP');
+
+INSERT INTO shape_point (shape_id, city_id, shape_pt_sequence, lat, lon, shape_dist_traveled)
+VALUES
+    (1, 1, 1, 45.464247, 9.190011, 0.000),
+    (1, 1, 2, 45.465900, 9.185400, 0.480),
+    (1, 1, 3, 45.467100, 9.180200, 0.930),
+    (1, 1, 4, 45.468680, 9.176370, 1.310);
+
 INSERT INTO trip (
-    trip_id, city_id, route_id, calendar_id, gtfs_trip_id, headsign, short_name, direction_id, wheelchair_accessible, bikes_allowed
+    trip_id, city_id, route_id, calendar_id, shape_id, gtfs_trip_id, headsign, short_name, direction_id, wheelchair_accessible, bikes_allowed
 )
 VALUES
-    (1, 1, 1, 1, 'M1_0800', 'Sesto 1 Maggio FS', 'M1-0800', 0, 1, 1),
-    (2, 1, 2, 1, 'M2_0825', 'Assago Forum', 'M2-0825', 1, 1, 1),
-    (3, 2, 3, 2, 'MB_0900', 'Laurentina', 'MB-0900', 1, 1, 1);
+    (1, 1, 1, 1, 1, 'M1_0800', 'Sesto 1 Maggio FS', 'M1-0800', 0, 1, 1),
+    (2, 1, 2, 1, NULL, 'M2_0825', 'Assago Forum', 'M2-0825', 1, 1, 1),
+    (3, 2, 3, 2, NULL, 'MB_0900', 'Laurentina', 'MB-0900', 1, 1, 1);
 
 -- Two exceptions, so the sample exercises both directions of calendar_dates.txt:
 -- 2026-12-25 is a Friday the weekday pattern would cover, and 2026-04-05 is a
@@ -87,6 +100,7 @@ SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('agency', 'agency_id'), COALESCE(MAX(agency
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('route', 'route_id'), COALESCE(MAX(route_id), 1), TRUE) FROM route;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('calendar', 'calendar_id'), COALESCE(MAX(calendar_id), 1), TRUE) FROM calendar;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('calendar_date', 'calendar_date_id'), COALESCE(MAX(calendar_date_id), 1), TRUE) FROM calendar_date;
+SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('shape', 'shape_id'), COALESCE(MAX(shape_id), 1), TRUE) FROM shape;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('trip', 'trip_id'), COALESCE(MAX(trip_id), 1), TRUE) FROM trip;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('stop', 'stop_id'), COALESCE(MAX(stop_id), 1), TRUE) FROM stop;
 SELECT SETVAL(PG_GET_SERIAL_SEQUENCE('fare', 'fare_id'), COALESCE(MAX(fare_id), 1), TRUE) FROM fare;

@@ -76,11 +76,32 @@ CREATE TABLE calendar_date (
     FOREIGN KEY (calendar_id, city_id) REFERENCES calendar (calendar_id, city_id) ON DELETE CASCADE
 );
 
+CREATE TABLE shape (
+    shape_id BIGSERIAL PRIMARY KEY,
+    city_id BIGINT NOT NULL REFERENCES city (city_id) ON DELETE RESTRICT,
+    gtfs_shape_id VARCHAR(64) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (city_id, gtfs_shape_id),
+    UNIQUE (shape_id, city_id)
+);
+
+CREATE TABLE shape_point (
+    shape_id BIGINT NOT NULL,
+    city_id BIGINT NOT NULL,
+    shape_pt_sequence INTEGER NOT NULL CHECK (shape_pt_sequence >= 0),
+    lat NUMERIC(9, 6) NOT NULL CHECK (lat BETWEEN -90 AND 90),
+    lon NUMERIC(9, 6) NOT NULL CHECK (lon BETWEEN -180 AND 180),
+    shape_dist_traveled NUMERIC(10, 3) CHECK (shape_dist_traveled IS NULL OR shape_dist_traveled >= 0),
+    PRIMARY KEY (shape_id, shape_pt_sequence),
+    FOREIGN KEY (shape_id, city_id) REFERENCES shape (shape_id, city_id) ON DELETE CASCADE
+);
+
 CREATE TABLE trip (
     trip_id BIGSERIAL PRIMARY KEY,
     city_id BIGINT NOT NULL REFERENCES city (city_id) ON DELETE RESTRICT,
     route_id BIGINT NOT NULL,
     calendar_id BIGINT NOT NULL,
+    shape_id BIGINT,
     gtfs_trip_id VARCHAR(96) NOT NULL,
     headsign VARCHAR(180),
     short_name VARCHAR(32),
@@ -92,7 +113,8 @@ CREATE TABLE trip (
     UNIQUE (city_id, gtfs_trip_id),
     UNIQUE (trip_id, city_id),
     FOREIGN KEY (route_id, city_id) REFERENCES route (route_id, city_id) ON DELETE RESTRICT,
-    FOREIGN KEY (calendar_id, city_id) REFERENCES calendar (calendar_id, city_id) ON DELETE RESTRICT
+    FOREIGN KEY (calendar_id, city_id) REFERENCES calendar (calendar_id, city_id) ON DELETE RESTRICT,
+    FOREIGN KEY (shape_id, city_id) REFERENCES shape (shape_id, city_id) ON DELETE RESTRICT
 );
 
 CREATE TABLE stop (
@@ -152,6 +174,8 @@ CREATE TABLE fare (
 CREATE INDEX idx_trip_city_calendar ON trip (city_id, calendar_id);
 CREATE INDEX idx_stop_time_stop_departure ON stop_time (stop_id, departure_time);
 CREATE INDEX idx_calendar_date_city_date ON calendar_date (city_id, service_date, exception_type);
+CREATE INDEX idx_shape_point_shape_sequence ON shape_point (shape_id, shape_pt_sequence);
+CREATE INDEX idx_trip_city_shape ON trip (city_id, shape_id) WHERE shape_id IS NOT NULL;
 
 -- A service runs on a date when its weekly pattern covers that date and no
 -- exception removes it, or when an exception adds it. That is the GTFS rule

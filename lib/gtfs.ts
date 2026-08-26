@@ -1,6 +1,10 @@
 import { db } from "@/lib/db";
 import type { City, RouteLine, StopPoint } from "@/types/gtfs";
 
+// Enough to draw a city-scale polyline faithfully; shapes.txt often carries a
+// point every few metres, which no map at this zoom can use.
+const MAX_SHAPE_POINTS_PER_ROUTE = 200;
+
 type CityRow = {
   city_id: number;
   city_code: string;
@@ -26,6 +30,12 @@ type RoutePointRow = {
   stop_id: number;
   stop_lat: string;
   stop_lon: string;
+};
+
+type ShapePointRow = {
+  route_id: number;
+  shape_lat: string;
+  shape_lon: string;
 };
 
 type RouteStatsRow = {
@@ -262,6 +272,52 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
     [cityId]
   );
 
+  // Real geometry from shapes.txt, when the feed has it. Points are thinned per
+  // route rather than cut by a global LIMIT: a global cap would leave the last
+  // routes with half a polyline, while thinning gives every route a complete path.
+  const shapePointsResult = await db.query<ShapePointRow>(
+    `
+    WITH route_shape AS (
+      SELECT DISTINCT ON (t.route_id)
+        t.route_id,
+        t.shape_id
+      FROM transport.trip t
+      JOIN transport.route r
+        ON r.route_id = t.route_id
+       AND r.city_id = t.city_id
+      WHERE t.city_id = $1
+        AND r.is_active
+        AND t.shape_id IS NOT NULL
+        AND EXISTS (SELECT 1 FROM transport.stop_time present WHERE present.trip_id = t.trip_id)
+      ORDER BY t.route_id, t.trip_id
+    ),
+    numbered AS (
+      SELECT
+        rs.route_id,
+        sp.shape_pt_sequence,
+        sp.lat,
+        sp.lon,
+        ROW_NUMBER() OVER (PARTITION BY rs.route_id ORDER BY sp.shape_pt_sequence) AS rn,
+        COUNT(*) OVER (PARTITION BY rs.route_id) AS total
+      FROM route_shape rs
+      JOIN transport.shape_point sp
+        ON sp.shape_id = rs.shape_id
+       AND sp.city_id = $1
+    )
+    SELECT
+      route_id,
+      lat::text AS shape_lat,
+      lon::text AS shape_lon
+    FROM numbered
+    WHERE total <= ${MAX_SHAPE_POINTS_PER_ROUTE}
+       OR rn = 1
+       OR rn = total
+       OR rn % CEIL(total::numeric / ${MAX_SHAPE_POINTS_PER_ROUTE})::int = 0
+    ORDER BY route_id, shape_pt_sequence
+    `,
+    [cityId]
+  );
+
   const routeStatsResult = await db.query<RouteStatsRow>(
     `
     WITH trip_counts AS (
@@ -314,6 +370,7 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
       longName: point.long_name,
       color: normalizeRouteColor(point.color_hex, point.route_id),
       points: [],
+      geometry: "stops",
       stopIds: [],
       tripsCount: stats.tripsCount,
       stopEvents: stats.stopEvents,
@@ -324,6 +381,22 @@ export async function getGtfsByCityCode(cityCode: string): Promise<{
     item.points.push([Number(point.stop_lat), Number(point.stop_lon)]);
     item.stopIds.push(point.stop_id);
     groupedRoutes.set(point.route_id, item);
+  }
+
+  const shapePointsByRoute = new Map<number, [number, number][]>();
+  for (const row of shapePointsResult.rows) {
+    const points = shapePointsByRoute.get(row.route_id) ?? [];
+    points.push([Number(row.shape_lat), Number(row.shape_lon)]);
+    shapePointsByRoute.set(row.route_id, points);
+  }
+
+  for (const route of groupedRoutes.values()) {
+    const shapePoints = shapePointsByRoute.get(route.routeId);
+    // A one-point shape is not a path; keep the stop-derived line instead.
+    if (shapePoints && shapePoints.length > 1) {
+      route.points = shapePoints;
+      route.geometry = "shape";
+    }
   }
 
   const routes = assignRouteCategories(

@@ -773,6 +773,14 @@ export function CityExplorer() {
                         <span className={`line-badge line-badge-${route.routeCategory}`}>
                           {routeCategoryLabel(route.routeCategory)}
                         </span>
+                        {route.geometry === "stops" ? (
+                          <span
+                            className="line-badge line-badge-approx"
+                            title="Percorso ricostruito collegando le fermate: il feed non contiene shapes.txt per questa linea."
+                          >
+                            tracciato approssimato
+                          </span>
+                        ) : null}
                       </span>
                     </span>
                     {activeSet.has(route.routeId) ? <span className="line-item-state">Attiva</span> : null}

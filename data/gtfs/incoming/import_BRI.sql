@@ -62,7 +62,16 @@ CREATE TEMP TABLE gtfs_trips_raw (
     direction_id TEXT,
     block_id TEXT,
     wheelchair_accessible TEXT,
-    bikes_allowed TEXT
+    bikes_allowed TEXT,
+    shape_id TEXT
+);
+
+CREATE TEMP TABLE gtfs_shapes_raw (
+    shape_id TEXT,
+    shape_pt_lat TEXT,
+    shape_pt_lon TEXT,
+    shape_pt_sequence TEXT,
+    shape_dist_traveled TEXT
 );
 
 CREATE TEMP TABLE gtfs_stop_times_raw (
@@ -91,6 +100,7 @@ CREATE TEMP TABLE gtfs_fares_raw (
 \copy gtfs_calendar_raw FROM '/work/data/gtfs/incoming/BARI_norm/calendar.txt' WITH (FORMAT csv, HEADER true)
 \copy gtfs_calendar_dates_raw FROM '/work/data/gtfs/incoming/BARI_norm/calendar_dates.txt' WITH (FORMAT csv, HEADER true)
 \copy gtfs_trips_raw FROM '/work/data/gtfs/incoming/BARI_norm/trips.txt' WITH (FORMAT csv, HEADER true)
+\copy gtfs_shapes_raw FROM '/work/data/gtfs/incoming/BARI_norm/shapes.txt' WITH (FORMAT csv, HEADER true)
 \copy gtfs_stop_times_raw FROM '/work/data/gtfs/incoming/BARI_norm/stop_times.txt' WITH (FORMAT csv, HEADER true)
 \copy gtfs_fares_raw FROM '/work/data/gtfs/incoming/BARI_norm/fare_attributes.txt' WITH (FORMAT csv, HEADER true)
 
@@ -312,13 +322,56 @@ ON CONFLICT (city_id, calendar_id, service_date)
 DO UPDATE SET
     exception_type = EXCLUDED.exception_type;
 
+-- shapes.txt. The upload is authoritative for the city's geometry, so points are
+-- rebuilt; the shape rows themselves are kept, because trips still reference them.
+DELETE FROM shape_point sp
+USING gtfs_import_ctx ctx
+WHERE sp.city_id = ctx.city_id;
+
+INSERT INTO shape (city_id, gtfs_shape_id)
+SELECT DISTINCT
+    ctx.city_id,
+    NULLIF(sh.shape_id, '')
+FROM gtfs_shapes_raw sh
+CROSS JOIN gtfs_import_ctx ctx
+WHERE NULLIF(sh.shape_id, '') IS NOT NULL
+ON CONFLICT (city_id, gtfs_shape_id) DO NOTHING;
+
+INSERT INTO shape_point (
+    shape_id, city_id, shape_pt_sequence, lat, lon, shape_dist_traveled
+)
+SELECT
+    sp.shape_id,
+    ctx.city_id,
+    NULLIF(sh.shape_pt_sequence, '')::INTEGER,
+    NULLIF(sh.shape_pt_lat, '')::NUMERIC(9, 6),
+    NULLIF(sh.shape_pt_lon, '')::NUMERIC(9, 6),
+    CASE
+        WHEN NULLIF(sh.shape_dist_traveled, '') IS NOT NULL THEN NULLIF(sh.shape_dist_traveled, '')::NUMERIC(10, 3)
+        ELSE NULL
+    END
+FROM gtfs_shapes_raw sh
+CROSS JOIN gtfs_import_ctx ctx
+JOIN shape sp
+  ON sp.city_id = ctx.city_id
+ AND sp.gtfs_shape_id = NULLIF(sh.shape_id, '')
+WHERE NULLIF(sh.shape_pt_sequence, '') ~ '^\d+$'
+  AND NULLIF(sh.shape_pt_lat, '') IS NOT NULL
+  AND NULLIF(sh.shape_pt_lon, '') IS NOT NULL
+ON CONFLICT (shape_id, shape_pt_sequence)
+DO UPDATE SET
+    lat = EXCLUDED.lat,
+    lon = EXCLUDED.lon,
+    shape_dist_traveled = EXCLUDED.shape_dist_traveled;
+
 INSERT INTO trip (
-    city_id, route_id, calendar_id, gtfs_trip_id, headsign, short_name, direction_id, block_id, wheelchair_accessible, bikes_allowed
+    city_id, route_id, calendar_id, shape_id, gtfs_trip_id, headsign, short_name, direction_id, block_id, wheelchair_accessible, bikes_allowed
 )
 SELECT
     ctx.city_id,
     r.route_id,
     c.calendar_id,
+    sh.shape_id,
     NULLIF(tr.trip_id, ''),
     NULLIF(tr.trip_headsign, ''),
     NULLIF(tr.trip_short_name, ''),
@@ -343,11 +396,15 @@ JOIN route r
 JOIN calendar c
   ON c.city_id = ctx.city_id
  AND c.gtfs_service_id = NULLIF(tr.service_id, '')
+LEFT JOIN shape sh
+  ON sh.city_id = ctx.city_id
+ AND sh.gtfs_shape_id = NULLIF(tr.shape_id, '')
 WHERE NULLIF(tr.trip_id, '') IS NOT NULL
 ON CONFLICT (city_id, gtfs_trip_id)
 DO UPDATE SET
     route_id = EXCLUDED.route_id,
     calendar_id = EXCLUDED.calendar_id,
+    shape_id = EXCLUDED.shape_id,
     headsign = EXCLUDED.headsign,
     short_name = EXCLUDED.short_name,
     direction_id = EXCLUDED.direction_id,
@@ -430,5 +487,3 @@ DO UPDATE SET
     is_active = TRUE;
 
 COMMIT;
-
-

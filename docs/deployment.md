@@ -147,6 +147,21 @@ Two things to expect afterwards:
   calendar ended last month, "today" correctly has no service. The last verification query the
   migration prints shows each city's service window and whether today falls inside it.
 
+### 003 — somewhere to keep shapes.txt
+
+`db/migrations/003_shapes.sql` adds `shape`, `shape_point` and `trip.shape_id`. Nothing is dropped
+or deleted, so it needs no rehearsal, though a backup before any schema change is still the habit
+worth keeping. It refuses to run before 002.
+
+```bash
+docker compose --env-file deploy.env -f compose.production.yml exec -T postgres \
+  psql -U gtfs -d gtfs_hub -v ON_ERROR_STOP=1 < db/migrations/003_shapes.sql
+```
+
+It **does not backfill**: the tables stay empty until the next feed import, because the geometry
+lives in the feed, not in anything the database already holds. Until then the map keeps drawing the
+stop-derived line, which it now labels as approximate.
+
 ## Security boundary
 
 - The Next.js process runs as a non-root user.

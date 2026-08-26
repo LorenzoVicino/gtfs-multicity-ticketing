@@ -54,6 +54,7 @@ $requiredFiles = @(
 $optionalFiles = @{
     "calendar.txt" = "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date"
     "calendar_dates.txt" = "service_id,date,exception_type"
+    "shapes.txt" = "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence,shape_dist_traveled"
     "fare_attributes.txt" = "fare_id,price,currency_type,payment_method,transfers,transfer_duration"
 }
 
@@ -93,6 +94,7 @@ $args = @(
     "-v", "stops_file=$($resolved["stops.txt"])",
     "-v", "calendar_file=$($resolved["calendar.txt"])",
     "-v", "calendar_dates_file=$($resolved["calendar_dates.txt"])",
+    "-v", "shapes_file=$($resolved["shapes.txt"])",
     "-v", "trips_file=$($resolved["trips.txt"])",
     "-v", "stop_times_file=$($resolved["stop_times.txt"])",
     "-v", "fare_attributes_file=$($resolved["fare_attributes.txt"])",
