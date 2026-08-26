@@ -80,8 +80,10 @@ export function parseGtfsArchive(buffer: Buffer, hints: ParseHints): GtfsBuilder
   const stopRows = rows("stops.txt");
   const routeRows = rows("routes.txt");
   const calendarRows = rows("calendar.txt");
+  const calendarDateRows = rows("calendar_dates.txt");
   const tripRows = rows("trips.txt");
   const stopTimeRows = rows("stop_times.txt");
+  const feedInfoRows = rows("feed_info.txt");
 
   const agencies: GtfsBuilderAgency[] = agencyRows.map((row, index) => ({
     id: safeGtfsId(row.agency_id, `AGENCY_${index + 1}`),
@@ -99,14 +101,49 @@ export function parseGtfsArchive(buffer: Buffer, hints: ParseHints): GtfsBuilder
   nextYear.setFullYear(nextYear.getFullYear() + 1);
   const fallbackStart = dateValue(now);
   const fallbackEnd = dateValue(nextYear);
+  const exceptionsByService = new Map<string, GtfsBuilderService["exceptions"]>();
+  for (const row of calendarDateRows) {
+    const serviceId = safeGtfsId(row.service_id, "");
+    const date = isoDate(row.date, "");
+    if (!serviceId || !date || (row.exception_type !== "1" && row.exception_type !== "2")) continue;
+    const exceptions = exceptionsByService.get(serviceId) ?? [];
+    exceptions.push({ date, exceptionType: row.exception_type });
+    exceptionsByService.set(serviceId, exceptions);
+  }
+
   const services: GtfsBuilderService[] = calendarRows
     .filter((row) => row.service_id)
-    .map((row) => ({ id: safeGtfsId(row.service_id, "SERVICE"), startDate: isoDate(row.start_date, fallbackStart), endDate: isoDate(row.end_date, fallbackEnd), days: daysFromRow(row) }));
+    .map((row) => {
+      const id = safeGtfsId(row.service_id, "SERVICE");
+      return {
+        id,
+        startDate: isoDate(row.start_date, fallbackStart),
+        endDate: isoDate(row.end_date, fallbackEnd),
+        days: daysFromRow(row),
+        exceptions: exceptionsByService.get(id) ?? []
+      };
+    });
   const serviceIds = new Set(services.map((service) => service.id));
   for (const row of tripRows) {
     const id = safeGtfsId(row.service_id, "SERVICE");
     if (!serviceIds.has(id)) {
-      services.push({ id, startDate: fallbackStart, endDate: fallbackEnd, days: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: true, sunday: true } });
+      const exceptions = exceptionsByService.get(id) ?? [];
+      const dates = exceptions.map((exception) => exception.date).sort();
+      services.push({
+        id,
+        startDate: dates[0] ?? fallbackStart,
+        endDate: dates[dates.length - 1] ?? fallbackEnd,
+        days: {
+          monday: exceptions.length === 0,
+          tuesday: exceptions.length === 0,
+          wednesday: exceptions.length === 0,
+          thursday: exceptions.length === 0,
+          friday: exceptions.length === 0,
+          saturday: exceptions.length === 0,
+          sunday: exceptions.length === 0
+        },
+        exceptions
+      });
       serviceIds.add(id);
     }
   }
@@ -116,8 +153,8 @@ export function parseGtfsArchive(buffer: Buffer, hints: ParseHints): GtfsBuilder
       id: safeGtfsId(row.stop_id, ""),
       code: row.stop_code?.trim() || "",
       name: row.stop_name?.trim() || row.stop_id?.trim() || "",
-      lat: Number(row.stop_lat),
-      lon: Number(row.stop_lon),
+      lat: row.stop_lat?.trim() ? Number(row.stop_lat) : Number.NaN,
+      lon: row.stop_lon?.trim() ? Number(row.stop_lon) : Number.NaN,
       zoneId: row.zone_id?.trim() || "",
       locationType: numericChoice(row.location_type, ["0", "1", "2", "3", "4"] as const, "0"),
       parentStation: row.parent_station?.trim() || "",
@@ -156,6 +193,7 @@ export function parseGtfsArchive(buffer: Buffer, hints: ParseHints): GtfsBuilder
       departureTime: departure,
       pickupType: numericChoice(row.pickup_type, ["0", "1", "2", "3"] as const, "0"),
       dropOffType: numericChoice(row.drop_off_type, ["0", "1", "2", "3"] as const, "0"),
+      shapeDistTraveled: row.shape_dist_traveled?.trim() || undefined,
       sequence: Number(row.stop_sequence) || 0
     };
     stopTimesByTrip.set(tripId, [...(stopTimesByTrip.get(tripId) ?? []), item]);
@@ -168,8 +206,10 @@ export function parseGtfsArchive(buffer: Buffer, hints: ParseHints): GtfsBuilder
         stopId: time.stopId,
         arrivalTime: time.arrivalTime,
         departureTime: time.departureTime,
+        stopSequence: time.sequence,
         pickupType: time.pickupType,
-        dropOffType: time.dropOffType
+        dropOffType: time.dropOffType,
+        shapeDistTraveled: time.shapeDistTraveled
       }));
       return {
         id,
@@ -179,6 +219,7 @@ export function parseGtfsArchive(buffer: Buffer, hints: ParseHints): GtfsBuilder
         shortName: row.trip_short_name?.trim() || "",
         directionId: row.direction_id === "1" ? 1 : 0,
         blockId: row.block_id?.trim() || "",
+        shapeId: row.shape_id?.trim() || undefined,
         wheelchairAccessible: numericChoice(row.wheelchair_accessible, ["0", "1", "2"] as const, "0"),
         bikesAllowed: numericChoice(row.bikes_allowed, ["0", "1", "2"] as const, "0"),
         stopTimes
@@ -191,6 +232,19 @@ export function parseGtfsArchive(buffer: Buffer, hints: ParseHints): GtfsBuilder
     route.stopIds = patterns.sort((a, b) => b.length - a.length)[0] ?? [];
   }
 
+  const feedInfoRow = feedInfoRows[0];
+  const primaryService = services[0];
+  const feedInfo = feedInfoRow ? {
+    publisherName: feedInfoRow.feed_publisher_name?.trim() || agencies[0].name,
+    publisherUrl: feedInfoRow.feed_publisher_url?.trim() || agencies[0].url,
+    lang: feedInfoRow.feed_lang?.trim() || agencies[0].lang || "it",
+    startDate: isoDate(feedInfoRow.feed_start_date, primaryService?.startDate ?? fallbackStart),
+    endDate: isoDate(feedInfoRow.feed_end_date, primaryService?.endDate ?? fallbackEnd),
+    version: feedInfoRow.feed_version?.trim() || "",
+    contactEmail: feedInfoRow.feed_contact_email?.trim() || undefined,
+    contactUrl: feedInfoRow.feed_contact_url?.trim() || undefined
+  } : undefined;
+
   return {
     version: 2,
     project: { cityCode: hints.cityCode.trim().toUpperCase(), cityName: hints.cityName.trim() },
@@ -199,6 +253,7 @@ export function parseGtfsArchive(buffer: Buffer, hints: ParseHints): GtfsBuilder
     stops,
     routes,
     trips,
+    feedInfo,
     updatedAt: new Date().toISOString()
   };
 }

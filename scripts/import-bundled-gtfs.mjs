@@ -267,7 +267,7 @@ async function importZip({ zipPath, cityCode, cityName, serviceDate }) {
   for (const fileName of REQUIRED_FILES) {
     const found = await findFeedFile(extractedDir, fileName);
     if (!found) {
-      throw new Error(`File GTFS mancante: ${fileName}`);
+      throw new Error(`Missing GTFS file: ${fileName}`);
     }
     resolved[fileName] = found;
   }
@@ -349,24 +349,24 @@ async function main() {
   try {
     await fs.access(zipPath);
   } catch {
-    console.log("Feed Cagliari non presente nel repository, salto import automatico.");
+    console.log("The Cagliari feed is not present in the repository; skipping automatic import.");
     return;
   }
 
   if (await cityExists(cityCode)) {
-    console.log("Cagliari gia` presente nel database, salto reimport del feed.");
-    console.log("Riallineamento catalogo ticket per le agency esistenti...");
+    console.log("Cagliari is already present in the database; skipping feed reimport.");
+    console.log("Refreshing the ticket catalog for existing agencies...");
     await ensureTicketCatalog();
-    console.log("Catalogo ticket riallineato.");
+    console.log("Ticket catalog refreshed.");
     return;
   }
 
   const serviceDate = new Date().toISOString().slice(0, 10);
-  console.log("Import automatico del feed bundled di Cagliari...");
+  console.log("Automatically importing the bundled Cagliari feed...");
   await importZip({ zipPath, cityCode, cityName, serviceDate });
-  console.log("Riallineamento catalogo ticket per le agency importate...");
+  console.log("Refreshing the ticket catalog for imported agencies...");
   await ensureTicketCatalog();
-  console.log("Import Cagliari completato.");
+  console.log("Cagliari import complete.");
 }
 
 main().catch((error) => {

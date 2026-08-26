@@ -1,14 +1,14 @@
-## Cosa cambia
+## What changed
 
-- Descrivere qui la modifica.
+- Describe the change here.
 
-## Verifica
+## Verification
 
 - [ ] `npm run check`
-- [ ] flusso interessato verificato manualmente
-- [ ] nessun segreto o dato locale incluso
-- [ ] documentazione aggiornata, se necessaria
+- [ ] Affected flow tested manually
+- [ ] No secrets or local data included
+- [ ] Documentation updated where needed
 
-## Impatto su database e deploy
+## Database and deployment impact
 
-Descrivere migrazioni, variabili ambiente o passaggi operativi. Scrivere “nessuno” se non applicabile.
+Describe migrations, environment variables, or operational steps. Write “none” when not applicable.

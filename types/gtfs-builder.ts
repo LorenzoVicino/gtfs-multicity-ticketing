@@ -29,6 +29,12 @@ export type GtfsBuilderService = {
   startDate: string;
   endDate: string;
   days: GtfsServiceDays;
+  exceptions?: GtfsBuilderServiceException[];
+};
+
+export type GtfsBuilderServiceException = {
+  date: string;
+  exceptionType: "1" | "2";
 };
 
 export type GtfsBuilderStop = {
@@ -58,8 +64,10 @@ export type GtfsBuilderStopTime = {
   stopId: string;
   arrivalTime: string;
   departureTime: string;
+  stopSequence?: number;
   pickupType?: "0" | "1" | "2" | "3";
   dropOffType?: "0" | "1" | "2" | "3";
+  shapeDistTraveled?: string;
 };
 
 export type GtfsBuilderTrip = {
@@ -70,9 +78,35 @@ export type GtfsBuilderTrip = {
   shortName?: string;
   directionId: 0 | 1;
   blockId?: string;
+  shapeId?: string;
   wheelchairAccessible?: "0" | "1" | "2";
   bikesAllowed?: "0" | "1" | "2";
   stopTimes: GtfsBuilderStopTime[];
+};
+
+export type GtfsBuilderFeedInfo = {
+  publisherName: string;
+  publisherUrl: string;
+  lang: string;
+  startDate: string;
+  endDate: string;
+  version: string;
+  contactEmail?: string;
+  contactUrl?: string;
+};
+
+export type GtfsSourceFile = {
+  name: string;
+  size: number;
+  managed: boolean;
+};
+
+export type GtfsSourceArchive = {
+  token: string;
+  sha256: string;
+  fileName: string;
+  files: GtfsSourceFile[];
+  originalFingerprint: string;
 };
 
 export type GtfsBuilderDraft = {
@@ -83,6 +117,8 @@ export type GtfsBuilderDraft = {
   stops: GtfsBuilderStop[];
   routes: GtfsBuilderRoute[];
   trips: GtfsBuilderTrip[];
+  feedInfo?: GtfsBuilderFeedInfo;
+  sourceArchive?: GtfsSourceArchive;
   updatedAt: string;
 };
 
@@ -109,4 +145,24 @@ export type GtfsBuilderIssue = {
   step: GtfsBuilderStep;
   field?: string;
   message: string;
+};
+
+export type CanonicalGtfsNotice = {
+  code: string;
+  severity: "ERROR" | "WARNING" | "INFO";
+  totalNotices: number;
+  sampleNotices?: Array<Record<string, unknown>>;
+};
+
+export type CanonicalGtfsValidation = {
+  valid: boolean;
+  validatorVersion: string;
+  validatedAt?: string;
+  validationTimeSeconds?: number;
+  errors: number;
+  warnings: number;
+  infos: number;
+  files: string[];
+  counts: Record<string, number>;
+  notices: CanonicalGtfsNotice[];
 };

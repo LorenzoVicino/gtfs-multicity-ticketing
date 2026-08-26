@@ -1,5 +1,6 @@
-import { createGtfsArchive } from "@/lib/gtfs-builder-archive";
+import { buildGtfsDraftArchive } from "@/lib/gtfs-build-service";
 import { safeGtfsId, validateGtfsDraft } from "@/lib/gtfs-builder-model";
+import { GtfsValidatorUnavailableError, validateGtfsArchiveCanonical } from "@/lib/gtfs-validator";
 import type { GtfsBuilderDraft } from "@/types/gtfs-builder";
 
 export const runtime = "nodejs";
@@ -16,24 +17,36 @@ export async function POST(request: Request) {
       return Response.json({ error: "Completa il GTFS prima di esportarlo.", issues }, { status: 422 });
     }
 
-    const archive = createGtfsArchive({ ...draft, updatedAt: new Date().toISOString() });
+    const archive = await buildGtfsDraftArchive(draft);
+    const canonical = await validateGtfsArchiveCanonical(archive.buffer, `${draft.project.cityCode || "GTFS"}_gtfs.zip`);
+    if (!canonical.valid) {
+      return Response.json({
+        error: "Il validatore ufficiale MobilityData ha trovato errori bloccanti.",
+        canonical
+      }, { status: 422 });
+    }
     const cityCode = safeGtfsId(draft.project.cityCode.toUpperCase(), "GTFS");
 
-    return new Response(new Uint8Array(archive), {
+    return new Response(new Uint8Array(archive.buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/zip",
         "Content-Disposition": `attachment; filename="${cityCode}_gtfs.zip"`,
-        "Cache-Control": "no-store"
+        "Cache-Control": "no-store",
+        "X-GTFS-Roundtrip-Mode": archive.mode,
+        "X-GTFS-Validator-Version": encodeURIComponent(canonical.validatorVersion),
+        "X-GTFS-Validation-Warnings": String(canonical.warnings),
+        "X-GTFS-Validation-Infos": String(canonical.infos)
       }
     });
   } catch (error) {
+    const validatorUnavailable = error instanceof GtfsValidatorUnavailableError;
     return Response.json(
       {
-        error: "Creazione archivio GTFS fallita.",
+        error: validatorUnavailable ? "Validazione canonica non disponibile." : "Creazione archivio GTFS fallita.",
         details: error instanceof Error ? error.message : "Errore sconosciuto"
       },
-      { status: 500 }
+      { status: validatorUnavailable ? 503 : 500 }
     );
   }
 }

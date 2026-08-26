@@ -108,21 +108,21 @@ function withNodeHeapSize(env, heapSizeMb) {
 function describeContainerStatus(status) {
   switch (status) {
     case "created":
-      return "container creato, avvio in corso";
+      return "container created, starting";
     case "restarting":
-      return "container in riavvio";
+      return "container restarting";
     case "starting":
-      return "database in inizializzazione";
+      return "database initializing";
     case "running":
-      return "container avviato, attendo healthcheck";
+      return "container running, waiting for health check";
     case "healthy":
-      return "database pronto";
+      return "database ready";
     case "unhealthy":
-      return "container avviato ma healthcheck fallito";
+      return "container running but health check failed";
     case "exited":
-      return "container terminato";
+      return "container exited";
     default:
-      return `stato rilevato: ${status || "sconosciuto"}`;
+      return `detected status: ${status || "unknown"}`;
   }
 }
 
@@ -132,16 +132,16 @@ async function main() {
 
   if (!existsSync(envLocal) && existsSync(envExample)) {
     copyFileSync(envExample, envLocal);
-    console.log("Creato .env.local a partire da .env.example");
+    console.log("Created .env.local from .env.example");
   }
 
-  console.log("Avvio PostgreSQL con Docker Compose...");
-  await run("docker", ["compose", "up", "-d", "postgres"]);
+  console.log("Starting PostgreSQL and MobilityData Validator with Docker Compose...");
+  await run("docker", ["compose", "up", "-d", "postgres", "gtfs-validator"]);
 
   const maxAttempts = 45;
   const waitMs = 2000;
   console.log(
-    `Attendo che il database sia pronto... (max ${Math.round((maxAttempts * waitMs) / 1000)}s)`
+    `Waiting for the database to become ready... (up to ${Math.round((maxAttempts * waitMs) / 1000)}s)`
   );
   let dbReady = false;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -160,40 +160,40 @@ async function main() {
 
       if (normalizedStatus === "healthy" || normalizedStatus === "running") {
         dbReady = true;
-        console.log("Database pronto.");
+        console.log("Database ready.");
         break;
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.log(`  [${attempt + 1}/${maxAttempts}] container non ancora interrogabile: ${message}`);
+      console.log(`  [${attempt + 1}/${maxAttempts}] container is not available yet: ${message}`);
     }
 
     await sleep(waitMs);
   }
 
   if (!dbReady) {
-    throw new Error("Il container PostgreSQL non e` diventato pronto in tempo utile.");
+    throw new Error("The PostgreSQL container did not become ready in time.");
   }
 
   const shouldInstall = !skipInstall || !existsSync(path.join(repoRoot, "node_modules"));
   if (shouldInstall) {
-    console.log("Installazione dipendenze npm...");
+    console.log("Installing npm dependencies...");
     await run("npm", ["install"]);
   } else {
-    console.log("Dipendenze gia` presenti, salto npm install.");
+    console.log("Dependencies are already installed; skipping npm install.");
   }
 
-  console.log("Verifica dataset bundled aggiuntivi...");
+  console.log("Checking additional bundled datasets...");
   await run("node", ["scripts/import-bundled-gtfs.mjs"], {
     env: withNodeHeapSize(process.env, 4096)
   });
 
   if (setupOnly) {
-    console.log("Setup completato. Database attivo e dipendenze pronte.");
+    console.log("Setup complete. The database, validator, and dependencies are ready.");
     return;
   }
 
-  console.log("Avvio applicazione su http://localhost:3000 ...");
+  console.log("Starting the application at http://localhost:3000 ...");
   await run("npm", ["run", "dev"]);
 }
 

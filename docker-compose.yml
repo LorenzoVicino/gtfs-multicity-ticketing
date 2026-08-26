@@ -1,4 +1,13 @@
 services:
+  gtfs-validator:
+    image: ghcr.io/mobilitydata/gtfs-validator-api:1.0.0-validator8.0.1@sha256:ca45acfa27a0dbf2388aa5434b5304529d2207fe3d0fde5b31a458e74b2133f7
+    container_name: gtfs-validator
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    security_opt:
+      - no-new-privileges:true
+
   postgres:
     image: postgres:16
     container_name: gtfs-postgres

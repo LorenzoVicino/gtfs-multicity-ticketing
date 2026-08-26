@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "GTFS Hub",
-  description: "Piattaforma GTFS urbana con ricerca citta e visualizzazione su mappa"
+  description: "A self-hosted platform for exploring, creating, editing, and validating multi-city GTFS feeds."
 };
 
 export default function RootLayout({

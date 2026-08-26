@@ -41,7 +41,7 @@ if ((Get-Item $feedFullPath).PSIsContainer) {
     Expand-Archive -Path $feedFullPath -DestinationPath $extractDir -Force
     $workingDir = $extractDir
 } else {
-    throw "FeedPath deve essere una cartella GTFS o un file .zip"
+    throw "FeedPath must be a GTFS directory or a .zip file"
 }
 
 $requiredFiles = @(
@@ -61,7 +61,7 @@ $resolved = @{}
 foreach ($name in $requiredFiles) {
     $file = Resolve-GtfsFile -Directory $workingDir -FileNameLower $name
     if (-not $file) {
-        throw "File GTFS mancante: $name in $workingDir"
+        throw "Missing GTFS file: $name in $workingDir"
     }
     $resolved[$name] = ($file.FullName -replace "\\", "/")
 }
@@ -79,7 +79,7 @@ foreach ($key in $optionalFiles.Keys) {
 
 $psqlCmd = Get-Command psql -ErrorAction SilentlyContinue
 if (-not $psqlCmd) {
-    throw "psql non trovato nel PATH. Installa PostgreSQL client e riprova."
+    throw "psql was not found in PATH. Install the PostgreSQL client and try again."
 }
 
 $sqlFile = (Join-Path $repoRoot "db\import_gtfs.sql")
@@ -104,7 +104,7 @@ if (-not [string]::IsNullOrWhiteSpace($DbUser)) {
     $args = @("-U", $DbUser) + $args
 }
 
-Write-Host "Import GTFS avviato..."
+Write-Host "Starting GTFS import..."
 Write-Host "  CityCode: $($CityCode.ToUpper())"
 Write-Host "  CityName: $CityName"
 Write-Host "  ServiceDate: $ServiceDate"
@@ -112,8 +112,7 @@ Write-Host "  Source: $workingDir"
 
 & $psqlCmd.Source @args
 if ($LASTEXITCODE -ne 0) {
-    throw "Import GTFS fallito con exit code $LASTEXITCODE"
+    throw "GTFS import failed with exit code $LASTEXITCODE"
 }
 
-Write-Host "Import GTFS completato con successo."
-
+Write-Host "GTFS import completed successfully."
