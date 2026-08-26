@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { importGtfsZip } from "@/lib/gtfs-upload";
+import { importGtfsZip } from "@/lib/gtfs-import";
 import { GtfsValidatorUnavailableError, validateGtfsArchiveCanonical } from "@/lib/gtfs-validator";
 import { savePublishedGtfsSource } from "@/lib/gtfs-workspace";
 
@@ -60,11 +60,17 @@ export async function POST(request: Request) {
     }
     await fs.writeFile(zipPath, buffer);
 
-    await importGtfsZip({
-      zipPath,
-      cityCode,
-      cityName
-    });
+    try {
+      await importGtfsZip({
+        zipPath,
+        cityCode,
+        cityName
+      });
+    } finally {
+      // Each layer removes what it created: this copy exists only to give the
+      // importer a path to read.
+      await fs.rm(zipPath, { force: true }).catch(() => undefined);
+    }
     await savePublishedGtfsSource(cityCode, buffer);
 
     return NextResponse.json({ ok: true, cityCode, cityName });
